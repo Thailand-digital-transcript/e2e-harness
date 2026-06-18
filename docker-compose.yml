@@ -166,7 +166,7 @@ services:
       S3_SECRET_KEY: minioadmin
       # Override: processing uploads to 'transcripts'; orchestrator default is 'transcript-xmls'
       S3_XML_BUCKET: transcripts
-      ORCHESTRATOR_API_KEYS: "************"
+      ORCHESTRATOR_API_KEYS: "test-key"
       OUTBOX_RELAY_ENABLED: "true"
       SPRING_CLOUD_DISCOVERY_ENABLED: "false"
     healthcheck:
@@ -201,7 +201,7 @@ services:
       CSC_SERVICE_URL: http://csc:9000
       CSC_TOKEN_URL: http://csc:9000/oauth2/token
       CSC_CLIENT_ID: e2e-client
-      CSC_CLIENT_SECRET: "******************"
+      CSC_CLIENT_SECRET: "e2e-signing-secret"
       CSC_REGISTRAR_CREDENTIAL_ID: e2e-registrar-cred
       CSC_REGISTRAR_PIN: e2e-registrar-2024
       CSC_DEAN_CREDENTIAL_ID: e2e-dean-cred
