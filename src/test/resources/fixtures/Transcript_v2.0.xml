@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="../schematron/DigitalTranscript_Schematron.sch" type="application/xml" schematypens="http://purl.oclc.org/dsdl/schematron"?>
+<tc:Transcript xmlns:qt="urn:etda:teda:data:QualifiedDataType:1"
+ xmlns:tc="urn:etda:teda:documentation:Transcript:1"
+ xmlns:ccts="urn:un:unece:uncefact:documentation:standard:CoreComponentsTechnicalSpecification:2"
+ xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:16"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="urn:etda:teda:documentation:Transcript:1 file:../schema/data/standard/Transcript.xsd">
+    <tc:TranscriptContext>
+        <tc:OID>2.16.764.1.4.1.1.8.1.1</tc:OID>
+        <tc:Version>2.0</tc:Version>
+        <tc:TranscriptID>90993829998</tc:TranscriptID>
+        <tc:Name>ใบประมวลผลการศึกษาของมหาวิทยาลัย</tc:Name>
+        <tc:TypeCode>01</tc:TypeCode>
+        <tc:IssueDateTime>2020-05-04T18:13:51.0</tc:IssueDateTime>
+        <tc:Language>TH</tc:Language>
+        <tc:Status>Incomplete</tc:Status>
+    </tc:TranscriptContext>
+    <tc:Student>
+        <tc:DataSubjectID schemeID="StudenID">50253661772</tc:DataSubjectID>
+        <!-- เลขบัตรประจำตัวประชาชน 13 หลัก schemeID กำหนดเป็น NIDN -->
+        <tc:DataSubjectID schemeID="NIDN">17700253661789</tc:DataSubjectID>
+        <tc:NamePrefix languageID="th">นาย</tc:NamePrefix>
+        <tc:NamePrefix languageID="en">Mr.</tc:NamePrefix>
+        <tc:GivenName languageID="th">นักศึกษา</tc:GivenName>
+        <tc:GivenName languageID="en">Naksuksa</tc:GivenName>
+        <tc:FamilyName languageID="th">มหาวิทยาลัย</tc:FamilyName>
+        <tc:FamilyName languageID="en">Mahavittayalai</tc:FamilyName>
+        <tc:Gender>1</tc:Gender>
+        <tc:BirthDate>2006-05-04T00:00:00.0</tc:BirthDate>
+        <tc:Nationality>TH</tc:Nationality>
+        <tc:ResidentCountryOrTerritoryCode>TH</tc:ResidentCountryOrTerritoryCode>
+        <tc:DateOfAdmission>2020-05-04T18:13:51.0</tc:DateOfAdmission>
+        <tc:FacultyName>คณะวิศวกรรมศาสตร์</tc:FacultyName>
+        <tc:ProgramContext>
+            <tc:ProgramID>25450011100023</tc:ProgramID>
+            <tc:ProgramName>หลักสูตรวิทยาศาสตรมหาบัณฑิต</tc:ProgramName>
+            <tc:Major>ภาควิชาคอมพิวเตอร์</tc:Major>
+            <tc:Minor>สาขาวิชาวิศวกรรมซอฟต์แวร์</tc:Minor>
+            <tc:Degree>มหาบัณฑิต</tc:Degree>
+        </tc:ProgramContext>
+        <tc:CreditsTranferred>0</tc:CreditsTranferred>
+        <tc:PreviousCertificate>ปริญญาบัณฑิต</tc:PreviousCertificate>
+        <tc:PreviousHons>เกียรตินิยมอันดับ 1</tc:PreviousHons>
+        <tc:PreviousOrganization>มหาวิทยาลัย</tc:PreviousOrganization>
+    </tc:Student>
+    <tc:Organization>
+        <tc:OrganizationID>01110</tc:OrganizationID>
+        <tc:OrganizationName>มหาวิทยาลัยตัวอย่าง</tc:OrganizationName>
+        <tc:SchoolLevel>อุดมศึกษา</tc:SchoolLevel>
+        <tc:Logo>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</tc:Logo>
+        <tc:Address>
+            <tc:StreetName>พระราม 9</tc:StreetName>
+            <tc:CitySubDivisionName>ทุ่งพญาไท</tc:CitySubDivisionName>
+            <tc:CityName>ราชเทวี</tc:CityName>
+            <tc:CountrySubDivisionName>กรุงเทพมหานคร</tc:CountrySubDivisionName>
+            <tc:CountryCode>TH</tc:CountryCode>
+            <tc:PostcodeCode>10400</tc:PostcodeCode>
+        </tc:Address>
+        <tc:CampusContext>
+            <tc:CampusID>10</tc:CampusID>
+            <tc:CampusName>วิทยาเขต</tc:CampusName>
+            <tc:Address>
+                <tc:StreetName>พระราม 9</tc:StreetName>
+                <tc:CitySubDivisionName>ทุ่งพญาไท</tc:CitySubDivisionName>
+                <tc:CityName>ราชเทวี</tc:CityName>
+                <tc:CountrySubDivisionName>กรุงเทพมหานคร</tc:CountrySubDivisionName>
+                <tc:CountryCode>TH</tc:CountryCode>
+                <tc:PostcodeCode>10400</tc:PostcodeCode>
+            </tc:Address>
+        </tc:CampusContext>
+        <tc:Registrar>
+            <tc:ID>1770025000619</tc:ID>
+            <tc:Title>นายทะเบียน</tc:Title>
+            <tc:NamePrefix>รศ.ดร.</tc:NamePrefix>
+            <tc:Name>ทะเบียน ประมวลผล</tc:Name>
+            <tc:RegistrarEmailAddress>tabain@gmail.com</tc:RegistrarEmailAddress>
+        </tc:Registrar>
+    </tc:Organization>
+    <tc:Course>
+        <tc:CourseNumber>2100035</tc:CourseNumber>
+        <tc:TypeCode>วิชาหลัก</tc:TypeCode>
+        <tc:TypeCode>หมวดคอมพิวเตอร์</tc:TypeCode>
+        <tc:CourseTitle languageID="TH">คอมพิวเตอร์เบื้องต้น</tc:CourseTitle>
+        <tc:CourseTitle languageID="EN">Basic Computer</tc:CourseTitle>
+        <tc:CourseCreditValue>3</tc:CourseCreditValue>
+        <tc:CourseCreditEarned>3</tc:CourseCreditEarned>
+        <tc:CourseAcademicGrade>3.5</tc:CourseAcademicGrade>
+        <tc:CourseAcademicGradeText>B+</tc:CourseAcademicGradeText>
+        <tc:CoursePointEarned>10.5</tc:CoursePointEarned>
+        <tc:EducationTypeSystem>ทวิภาค</tc:EducationTypeSystem>
+        <tc:SemesterName>ภาคต้น</tc:SemesterName>
+        <tc:Year>2020</tc:Year>
+    </tc:Course>
+    <tc:Course>
+        <tc:CourseNumber>2100036</tc:CourseNumber>
+        <tc:TypeCode>วิชาหลัก</tc:TypeCode>
+        <tc:TypeCode>หมวดคอมพิวเตอร์</tc:TypeCode>
+        <tc:CourseTitle languageID="TH">ฐานข้อมูลเบื้องต้น</tc:CourseTitle>
+        <tc:CourseTitle languageID="EN">Basic Database</tc:CourseTitle>
+        <tc:CourseCreditValue>3</tc:CourseCreditValue>
+        <tc:CourseCreditEarned>3</tc:CourseCreditEarned>
+        <tc:CourseAcademicGrade>3</tc:CourseAcademicGrade>
+        <tc:CourseAcademicGradeText>B</tc:CourseAcademicGradeText>
+        <tc:CoursePointEarned>9</tc:CoursePointEarned>
+        <tc:EducationTypeSystem>ทวิภาค</tc:EducationTypeSystem>
+        <tc:SemesterName>ภาคต้น</tc:SemesterName>
+        <tc:Year>2020</tc:Year>
+    </tc:Course>
+    <tc:AcademicSummary>
+        <tc:SemesterSummary>
+            <tc:EducationTypeSystem>ทวิภาค</tc:EducationTypeSystem>
+            <tc:SemesterName>ภาคต้น</tc:SemesterName>
+            <tc:Year>2020</tc:Year>
+            <tc:SemesterCreditValue>6</tc:SemesterCreditValue>
+            <tc:SemesterCreditEarned>6</tc:SemesterCreditEarned>
+            <tc:SemesterCreditCalculated>6</tc:SemesterCreditCalculated>
+            <tc:SemesterPointEarned>19.5</tc:SemesterPointEarned>
+            <tc:SemesterGPA>3.25</tc:SemesterGPA>
+            <tc:SemesterGPAX>3.25</tc:SemesterGPAX>
+        </tc:SemesterSummary>
+        <tc:TotalCreditValue>6</tc:TotalCreditValue>
+        <tc:TotalCreditEarned>6</tc:TotalCreditEarned>
+        <tc:TotalCreditCalculated>6</tc:TotalCreditCalculated>
+        <tc:TotalPointEarned>19.5</tc:TotalPointEarned>
+        <tc:TotalGPAX>3.25</tc:TotalGPAX>
+    </tc:AcademicSummary>
+    <tc:AdditionalInformation>
+        <tc:Hons>เกียรตินิยมอันดับ 1</tc:Hons>
+        <tc:ThesisTitle>Thesis Title Name</tc:ThesisTitle>
+        <tc:InfomationNote>
+            <tc:Subject>Advisor Name</tc:Subject>
+            <tc:Content>รศ.ดร. อาจารย์ ที่ปรึกษา</tc:Content>
+        </tc:InfomationNote>
+    </tc:AdditionalInformation>
+</tc:Transcript>
