@@ -6,6 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.ComposeContainer;
+import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -57,6 +58,10 @@ class CrossServiceHappyPathIT {
     @Container
     @SuppressWarnings("resource")
     static ComposeContainer ENV = new ComposeContainer(new File("docker-compose.yml"))
+            // Always rebuild images from the current service jars so the stack
+            // reflects the latest build-jars.sh output (Compose reuses cached
+            // images otherwise, silently running stale code).
+            .withBuild(true)
             .withExposedService(PROCESSING,   PROCESSING_PORT,   Wait.forHealthcheck())
             .withExposedService(ORCHESTRATOR, ORCHESTRATOR_PORT, Wait.forHealthcheck())
             .withExposedService(PDF_GEN,      PDF_GEN_PORT,      Wait.forHealthcheck())
@@ -104,9 +109,16 @@ class CrossServiceHappyPathIT {
         String processingBase   = base(PROCESSING,   PROCESSING_PORT);
         String orchestratorBase = base(ORCHESTRATOR, ORCHESTRATOR_PORT);
 
-        String kafkaBrokers = ENV.getServiceHost(KAFKA_SVC, KAFKA_PORT)
-                + ":" + ENV.getServicePort(KAFKA_SVC, KAFKA_PORT);
-        KafkaE2EHelper kafka = new KafkaE2EHelper(kafkaBrokers, MAPPER);
+        // Kafka I/O runs inside the broker container (see KafkaE2EHelper); the
+        // service name carries a compose instance suffix that differs between
+        // compose versions, so try the known variants.
+        ContainerState kafkaContainer = List.of("kafka-1", "kafka_1", KAFKA_SVC).stream()
+                .map(ENV::getContainerByServiceName)
+                .filter(java.util.Optional::isPresent)
+                .map(java.util.Optional::get)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("kafka container not found in compose env"));
+        KafkaE2EHelper kafka = new KafkaE2EHelper(kafkaContainer, MAPPER);
 
         String minioHost = ENV.getServiceHost(MINIO_SVC, MINIO_PORT);
         int    minioPort = ENV.getServicePort(MINIO_SVC, MINIO_PORT);

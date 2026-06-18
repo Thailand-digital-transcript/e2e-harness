@@ -1,81 +1,81 @@
 package com.wpanther.transcript.e2e;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
+import org.testcontainers.containers.Container.ExecResult;
+import org.testcontainers.containers.ContainerState;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
+import java.util.Base64;
 import java.util.function.Predicate;
 
 /**
- * Minimal Kafka producer + consumer for the e2e harness.
- * Constructed once per test class with the Testcontainers-mapped broker address.
+ * Kafka producer + consumer for the e2e harness that drives the broker by
+ * exec-ing the Kafka console tools <em>inside</em> the Kafka container, using
+ * the broker's own {@code localhost:9092} listener.
+ *
+ * <p>Testcontainers' {@code ComposeContainer} runs in containerised mode (an
+ * ambassador with ephemeral host ports), which cannot satisfy Kafka's
+ * advertised-listener contract for a host-side client. Exec-ing in-container
+ * side-steps host networking entirely: the test never opens a Kafka socket from
+ * the host. Payloads are base64-encoded in Java and decoded in the container so
+ * arbitrary JSON survives the shell intact.
  */
 public class KafkaE2EHelper {
 
-    private final String brokers;
+    private final ContainerState kafka;
     private final ObjectMapper mapper;
 
-    public KafkaE2EHelper(String brokers, ObjectMapper mapper) {
-        this.brokers = brokers;
-        this.mapper  = mapper;
+    public KafkaE2EHelper(ContainerState kafka, ObjectMapper mapper) {
+        this.kafka  = kafka;
+        this.mapper = mapper;
     }
 
-    /** Serialize {@code payload} to JSON and send synchronously to {@code topic}. */
+    /** Serialize {@code payload} to JSON and produce one record to {@code topic}. */
     public void send(String topic, String key, Object payload) {
-        try (KafkaProducer<String, String> p = producer()) {
-            p.send(new ProducerRecord<>(topic, key, mapper.writeValueAsString(payload))).get();
+        try {
+            String json = mapper.writeValueAsString(payload);
+            // Append a newline so kafka-console-producer flushes the record, then
+            // base64 the lot to keep the shell away from the JSON's quotes.
+            String b64 = Base64.getEncoder()
+                    .encodeToString((json + "\n").getBytes(StandardCharsets.UTF_8));
+            String cmd = "echo " + b64 + " | base64 -d | "
+                    + "kafka-console-producer --bootstrap-server localhost:9092 --topic " + topic;
+            ExecResult r = kafka.execInContainer("/bin/sh", "-c", cmd);
+            if (r.getExitCode() != 0) {
+                throw new RuntimeException("Kafka produce to " + topic + " failed (exit "
+                        + r.getExitCode() + "): " + r.getStderr());
+            }
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Kafka send failed on topic " + topic, e);
         }
     }
 
     /**
-     * Subscribe to {@code topic} with a unique group id and poll until a record
-     * deserialised to {@code type} matches {@code predicate}, or throw on timeout.
+     * Consume {@code topic} from the beginning (waiting up to {@code timeout} for
+     * traffic) and return the first record deserialised to {@code type} that
+     * matches {@code predicate}, or throw on timeout.
      */
     public <T> T pollFor(String topic, Class<T> type, Predicate<T> predicate, Duration timeout) {
-        String groupId = "e2e-" + UUID.randomUUID();
-        try (KafkaConsumer<String, String> c = consumer(groupId)) {
-            c.subscribe(List.of(topic));
-            long deadline = System.currentTimeMillis() + timeout.toMillis();
-            while (System.currentTimeMillis() < deadline) {
-                for (var rec : c.poll(Duration.ofMillis(500))) {
-                    T msg = mapper.readValue(rec.value(), type);
-                    if (predicate.test(msg)) return msg;
-                }
+        try {
+            String cmd = "kafka-console-consumer --bootstrap-server localhost:9092 --topic " + topic
+                    + " --from-beginning --timeout-ms " + timeout.toMillis();
+            // console-consumer exits non-zero when --timeout-ms elapses; the
+            // consumed values are still on stdout, so don't gate on the exit code.
+            ExecResult r = kafka.execInContainer("/bin/sh", "-c", cmd);
+            for (String line : r.getStdout().split("\n")) {
+                if (line.isBlank()) continue;
+                T msg = mapper.readValue(line, type);
+                if (predicate.test(msg)) return msg;
             }
-            throw new AssertionError("No matching message on " + topic + " within " + timeout);
+            throw new AssertionError("No matching message on " + topic + " within " + timeout
+                    + " (consumed: " + r.getStdout().lines().count() + " records)");
         } catch (AssertionError e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private KafkaProducer<String, String> producer() {
-        Properties p = new Properties();
-        p.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
-        p.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        p.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        return new KafkaProducer<>(p);
-    }
-
-    private KafkaConsumer<String, String> consumer(String groupId) {
-        Properties p = new Properties();
-        p.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
-        p.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        p.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        p.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        p.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        return new KafkaConsumer<>(p);
     }
 }
