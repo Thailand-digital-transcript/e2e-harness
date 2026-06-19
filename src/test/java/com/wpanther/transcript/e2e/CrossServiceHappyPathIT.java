@@ -39,12 +39,17 @@ class CrossServiceHappyPathIT {
     private static final String PDF_GEN           = "transcript-pdf-generation";
     private static final String MINIO_SVC         = "minio";
     private static final String KAFKA_SVC         = "kafka";
+    private static final String KEYCLOAK_SVC      = "keycloak";
 
     private static final int PROCESSING_PORT  = 8085;
     private static final int ORCHESTRATOR_PORT = 8095;
     private static final int PDF_GEN_PORT     = 8090;
     private static final int MINIO_PORT       = 9000;
     private static final int KAFKA_PORT       = 9092;
+    private static final int KEYCLOAK_PORT    = 8080;
+
+    private static final String E2E_CLIENT_SECRET =
+            System.getenv().getOrDefault("TRANSCRIPT_E2E_CLIENT_SECRET", "e2e-dev-secret");
 
     // ── Kafka topics ────────────────────────────────────────────────────────
     private static final String TOPIC_REGISTRAR_APPROVAL = "approval.registrar";
@@ -52,7 +57,6 @@ class CrossServiceHappyPathIT {
     private static final String TOPIC_BATCH_COMPLETED    = "transcript.batch.completed";
 
     // ── Test credentials ────────────────────────────────────────────────────
-    private static final String API_KEY          = "test-key";
     private static final String INSTITUTION_CODE = "01110";  // from <tc:OrganizationID> in fixture XML
 
     @Container
@@ -67,6 +71,7 @@ class CrossServiceHappyPathIT {
             .withExposedService(PDF_GEN,      PDF_GEN_PORT,      Wait.forHealthcheck())
             .withExposedService(MINIO_SVC,    MINIO_PORT,        Wait.forHealthcheck())
             .withExposedService(KAFKA_SVC,    KAFKA_PORT,        Wait.forListeningPort())
+            .withExposedService(KEYCLOAK_SVC, KEYCLOAK_PORT,     Wait.forHealthcheck())
             .withStartupTimeout(Duration.ofMinutes(10));
 
     // ── Shared test infrastructure ──────────────────────────────────────────
@@ -162,7 +167,7 @@ class CrossServiceHappyPathIT {
                     HttpResponse<String> listResp = HTTP.send(
                             HttpRequest.newBuilder()
                                     .uri(URI.create(orchestratorBase + "/api/v1/transcripts"))
-                                    .header("X-API-Key", API_KEY)
+                                    .header("Authorization", "Bearer " + bearer())
                                     .GET()
                                     .build(),
                             HttpResponse.BodyHandlers.ofString());
@@ -182,7 +187,7 @@ class CrossServiceHappyPathIT {
                 HttpRequest.newBuilder()
                         .uri(URI.create(orchestratorBase + "/api/v1/batches"))
                         .header("Content-Type", "application/json")
-                        .header("X-API-Key", API_KEY)
+                        .header("Authorization", "Bearer " + bearer())
                         .POST(HttpRequest.BodyPublishers.ofString(
                                 MAPPER.writeValueAsString(Map.of(
                                         "name", "E2E-Batch",
@@ -201,7 +206,7 @@ class CrossServiceHappyPathIT {
                 HttpRequest.newBuilder()
                         .uri(URI.create(orchestratorBase + "/api/v1/batches/" + batchId + "/items"))
                         .header("Content-Type", "application/json")
-                        .header("X-API-Key", API_KEY)
+                        .header("Authorization", "Bearer " + bearer())
                         .POST(HttpRequest.BodyPublishers.ofString(
                                 MAPPER.writeValueAsString(Map.of("itemIds", List.of(itemId[0])))))
                         .build(),
@@ -211,7 +216,7 @@ class CrossServiceHappyPathIT {
                 HttpRequest.newBuilder()
                         .uri(URI.create(orchestratorBase + "/api/v1/batches/" + batchId + "/close"))
                         .header("Content-Type", "application/json")
-                        .header("X-API-Key", API_KEY)
+                        .header("Authorization", "Bearer " + bearer())
                         .header("X-Closed-By", "e2e-test")
                         .POST(HttpRequest.BodyPublishers.noBody())
                         .build(),
@@ -301,11 +306,40 @@ class CrossServiceHappyPathIT {
                 + ":" + ENV.getServicePort(service, port);
     }
 
+    private static volatile String CACHED_TOKEN;
+
+    /** Lazily fetch + cache a transcript-e2e client-credentials access token. */
+    private String bearer() throws Exception {
+        if (CACHED_TOKEN == null) {
+            CACHED_TOKEN = fetchBearerToken();
+        }
+        return CACHED_TOKEN;
+    }
+
+    private String fetchBearerToken() throws Exception {
+        String tokenUrl = base(KEYCLOAK_SVC, KEYCLOAK_PORT)
+                + "/realms/transcript/protocol/openid-connect/token";
+        String form = "grant_type=client_credentials"
+                + "&client_id=transcript-e2e"
+                + "&client_secret=" + E2E_CLIENT_SECRET;
+        HttpResponse<String> r = HTTP.send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create(tokenUrl))
+                        .header("Content-Type", "application/x-www-form-urlencoded")
+                        .POST(HttpRequest.BodyPublishers.ofString(form))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        if (r.statusCode() != 200) {
+            throw new IllegalStateException("Keycloak token endpoint " + r.statusCode() + ": " + r.body());
+        }
+        return MAPPER.readTree(r.body()).get("access_token").asText();
+    }
+
     private BatchDetail getBatchDetail(String orchestratorBase, String batchId) throws Exception {
         HttpResponse<String> r = HTTP.send(
                 HttpRequest.newBuilder()
                         .uri(URI.create(orchestratorBase + "/api/v1/batches/" + batchId))
-                        .header("X-API-Key", API_KEY)
+                        .header("Authorization", "Bearer " + bearer())
                         .GET()
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
