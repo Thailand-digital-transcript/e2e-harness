@@ -285,3 +285,14 @@ services:
       timeout: 10s
       retries: 10
       start_period: 90s
+
+  transcript-approval-ui:
+    build:
+      context: ../transcript-approval-ui
+    ports:
+      - "8081:80"
+    depends_on:
+      transcript-orchestrator:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
