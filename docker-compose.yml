@@ -71,7 +71,10 @@ services:
     healthcheck:
       # The Keycloak image ships bash (kc.sh uses it), so /dev/tcp works without curl.
       # The realm endpoint returns 200 only after --import-realm completes.
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /realms/transcript HTTP/1.0\\r\\n\\r\\n' >&3 && cat <&3 | head -n1 | grep -q 200"]
+      # Use HTTP/1.1 with an explicit Host: header — Keycloak 24.0.5's
+      # VertxResteasyReactiveRequestContext.getRequestHost NPEs on HTTP/1.0
+      # requests without a Host header, so the healthcheck would always fail.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /realms/transcript HTTP/1.1\\r\\nHost: localhost:8080\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | head -n1 | grep -q 200"]
       interval: 10s
       timeout: 5s
       retries: 20
