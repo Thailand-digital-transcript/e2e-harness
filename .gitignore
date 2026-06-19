@@ -1,2 +1,4 @@
 services/*/app.jar
 target/
+# Synced from ../transcript-approval-ui by scripts/sync-realm.sh
+infra/keycloak/realm-export.json
