@@ -15,15 +15,18 @@ seeding scripts. The service source code lives in **sibling repositories** (see
 ## Prerequisites
 
 - **JDK 21** and **Maven** (to compile and run the harness)
-- **Docker** with the Compose v2 plugin (the integration tests boot a 9-container
+- **Docker** with the Compose v2 plugin (the integration tests boot an 11-container
   stack via [Testcontainers](https://java.testcontainers.org/))
-- Enough CPU/RAM for ~6 Spring Boot JVMs + Postgres + Kafka + MinIO concurrently
-- The sibling service repositories checked out alongside this one (below)
+- Enough CPU/RAM for ~6 Spring Boot JVMs + Postgres + Kafka + MinIO + Keycloak
+  concurrently
+- The sibling service repositories checked out alongside this one (below),
+  including the `transcript-approval-ui` repo (Keycloak realm source of truth)
 
 ## Workspace layout
 
 The build scripts package service JARs from sibling checkouts. Clone this repo and
-the five service repos as siblings under one parent directory:
+the six sibling repos (five services + the approval UI) as siblings under one
+parent directory:
 
 ```
 digital_transcript/                 # ← parent workspace
@@ -32,6 +35,7 @@ digital_transcript/                 # ← parent workspace
 ├── transcript-orchestrator/
 ├── transcript-signing/
 ├── transcript-pdf-generation/
+├── transcript-approval-ui/         # Keycloak realm source of truth + UI service
 └── etax/                           # CSC / eIDAS remote signing service
     └── eidasremotesigning/
 ```
@@ -43,19 +47,27 @@ layout above is required.
 
 ## Quick start
 
-Three steps: generate signing keystores, build the service JARs, then run the
-integration test (which boots the whole stack itself).
+Two steps: prepare the prerequisites (keystores, service JARs, Keycloak realm),
+then run the integration test (which boots the whole stack itself).
 
 ```bash
-# 1. One-time: generate the BCFKS signing keystores CSC relies on
-./scripts/gen-keystores.sh        # → infra/csc/keystores/*.bfks
+# 1. One-time (per fresh checkout or after sibling changes): keystores + jars + realm
+./scripts/prepare.sh              # wraps gen-keystores.sh + build-jars.sh + sync-realm.sh
 
-# 2. Build all five service JARs from the sibling repos
-./scripts/build-jars.sh           # → services/<svc>/app.jar
-
-# 3. Run the end-to-end integration test (boots the compose stack)
+# 2. Run the end-to-end integration test (boots the compose stack)
 mvn verify
 ```
+
+`./scripts/prepare.sh` chains three sub-steps:
+
+- `./scripts/gen-keystores.sh` — generates the BCFKS signing keystores CSC relies on
+  (writes to `infra/csc/keystores/*.bfks`).
+- `./scripts/build-jars.sh` — builds all five service JARs from the sibling repos
+  (copies the `-exec.jar` into `services/<svc>/app.jar`).
+- `./scripts/sync-realm.sh` — syncs the Keycloak dev realm from
+  `../transcript-approval-ui/keycloak/realm-export.json` into
+  `infra/keycloak/realm-export.json` (strips `organizationsEnabled` for 24.0.5
+  compatibility).
 
 Run a single integration test:
 
@@ -75,8 +87,13 @@ Bring the stack up manually for poking around (services stay up, no test run):
 docker compose up --build
 ```
 
-> **Order matters:** `mvn verify` requires the keystores and JARs to be present
-> first, or the compose stack will fail to start.
+To exercise the full saga through the UI manually: `docker compose up --build`,
+browse `http://localhost:8081`, log in as `registrar1`/`dean1` (realm
+`transcript`, dev-only secret `e2e-dev-secret`), then render and approve a batch
+through the UI.
+
+> **Order matters:** `mvn verify` requires the keystores, JARs, and synced realm
+> to be present first, or the compose stack will fail to start.
 
 ---
 
@@ -112,12 +129,13 @@ src/test/resources/fixtures/
 services/<svc>/                     # one Dockerfile + built app.jar per service
 infra/
 ├── postgres/init.sh               # creates per-service databases
-└── csc/{seed.sql, keystores/}     # CSC credentials + signing keystores
-docker-compose.yml                 # the 9-container stack
-scripts/{build-jars.sh, gen-keystores.sh}
+├── csc/{seed.sql, keystores/}     # CSC credentials + signing keystores
+└── keycloak/realm-export.json     # dev realm (synced from UI repo by prepare.sh)
+docker-compose.yml                 # the 11-container stack
+scripts/{prepare.sh, build-jars.sh, gen-keystores.sh, sync-realm.sh}
 ```
 
-### The compose stack (9 containers)
+### The compose stack (11 containers)
 
 | Service | Image / build | Port | Role |
 |---------|---------------|------|------|
@@ -125,19 +143,21 @@ scripts/{build-jars.sh, gen-keystores.sh}
 | `kafka` | `confluentinc/cp-kafka:7.6.0` (KRaft) | 9092 | Event broker |
 | `minio` | `minio/minio` | 9000 (api), 9001 (console) | S3-compatible object store |
 | `minio-init` | `minio/mc` | — | One-shot: creates the three buckets |
+| `keycloak` | `quay.io/keycloak/keycloak:24.0.5` | 8080 | OIDC issuer; realm `transcript` imported on boot |
 | `csc` | built (`eidasremotesigning`) | 9000 | eIDAS / remote signing service |
 | `csc-seed` | `postgres:16` | — | One-shot: loads CSC credentials |
 | `transcript-processing` | built | 8085 | Ingests transcript XML |
-| `transcript-orchestrator` | built | 8095 | Saga orchestration + REST API |
+| `transcript-orchestrator` | built | 8095 | Saga orchestration + REST API (JWT-protected) |
 | `transcript-signing` | built | 8088 | XAdES/PAdES signing via CSC |
 | `transcript-pdf-generation` | built | 8090 | Renders the signed PDF |
+| `transcript-approval-ui` | built (`../transcript-approval-ui`) | 8081 | React/Nginx SPA for registrar + dean approval |
 
 ### Defaults / credentials
 
 | | Value |
 |--|-------|
-| Orchestrator API key (`X-API-Key`) | `test-key` |
 | Institution code (from fixture) | `01110` |
+| Keycloak | realm `transcript` · client `transcript-e2e` (secret `e2e-dev-secret`, dev-only) · demo users `registrar1`/`dean1` (inst `01110`), `dual1` (inst `99999`) |
 | Postgres | `postgres` / `postgres` |
 | MinIO | `minioadmin` / `minioadmin` |
 | Kafka topics | `approval.registrar`, `approval.dean`, `transcript.batch.completed` |
@@ -155,11 +175,21 @@ base64-encodes payloads so arbitrary JSON survives the shell.
 
 ## Troubleshooting
 
-- **Stack won't start / `mvn verify` fails early** — keystores or JARs missing.
-  Re-run `./scripts/gen-keystores.sh` and `./scripts/build-jars.sh` first.
+- **Stack won't start / `mvn verify` fails early** — keystores, JARs, or the
+  Keycloak realm are missing. Re-run `./scripts/prepare.sh` first (it chains
+  gen-keystores + build-jars + sync-realm).
 - **Stale service behavior after rebuilding JARs** — the integration test forces
   image rebuilds (`withBuild(true)`), but a manual `docker compose up` reuses
   cached images. Use `docker compose up --build`.
+- **Keycloak never becomes healthy** — the realm import can take a while on a
+  cold start; the healthcheck allows a 30s `start_period` and 20 retries
+  (≈3.5 min). If it still fails, check `docker compose logs keycloak` for the
+  import error (the `organizationsEnabled` field is stripped by
+  `sync-realm.sh` for 24.0.5 compat).
+- **401 from `transcript-orchestrator`** — the harness now uses Keycloak JWTs;
+  ensure `./scripts/prepare.sh` was run so the realm is up, and that the
+  orchestrator's `KEYCLOAK_ISSUER` and `KEYCLOAK_JWKS_URI` envs resolve from
+  the running stack.
 - **Saga stalls at `PENDING_DEAN`** — the dean approval must not be published
   before the batch reaches `PENDING_DEAN`; otherwise the state machine no-ops
   while the Kafka offset is still committed, permanently losing the message.
