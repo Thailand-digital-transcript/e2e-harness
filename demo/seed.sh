@@ -27,7 +27,18 @@ status=$(curl -sS -o "$BODY" -w '%{http_code}' -X POST \
   "$PROCESSING_URL/api/v1/transcripts" \
   -H 'Content-Type: application/xml' \
   --data-binary "@$FIXTURE_PATH")
-[ "$status" = "202" ] || fail "ingest expected 202, got $status: $(cat "$BODY")"
+# transcript-processing keys on <tc:TranscriptID>. A re-ingest of identical
+# content returns 200 {"error":"Duplicate transcript","message":"...
+# with documentId: <id>"} — treat it as a clean no-op so a re-run of
+# up.sh / ingest.sh against a dirty volume does not break the demo.
+if [ "$status" = "200" ] && [ "$(jq -r '.error // empty' < "$BODY")" = "Duplicate transcript" ]; then
+  dup_id=$(jq -r '.message // ""' < "$BODY" | grep -oE '[0-9A-Za-z]+$' || true)
+  echo "demo-seed: transcript already ingested (documentId=${dup_id:-?}); it is already batched."
+  echo "demo-seed: nothing to do — to seed a NEW batch, ingest a transcript with a different"
+  echo "demo-seed: <tc:TranscriptID>, or run ./demo/down.sh to reset the stack and start fresh."
+  exit 0
+fi
+[ "$status" = "202" ] || fail "ingest expected 202 (or 200 Duplicate), got $status: $(cat "$BODY")"
 document_id=$(jq -r '.documentId' < "$BODY")
 [ -n "$document_id" ] && [ "$document_id" != "null" ] || fail "no documentId: $(cat "$BODY")"
 echo "demo-seed: ingested documentId=$document_id"
@@ -44,10 +55,7 @@ token=$(jq -r '.access_token' < "$BODY")
 auth="Authorization: Bearer $token"
 
 # ── Step 3: poll the orchestrator until the TranscriptItem appears ────────────
-# Relies on transcript-processing minting a FRESH documentId per POST (as the e2e
-# IT assumes). If the processing service is ever changed to de-duplicate identical
-# XML, a same-content re-ingest yields no new item and this poll times out below
-# with a clear message — distinct user XML is unaffected.
+# (For 202-new-item case; the 200-Duplicate case above exits before reaching here.)
 item_id=""
 for _ in $(seq 1 15); do
   status=$(curl -sS -o "$BODY" -w '%{http_code}' -H "$auth" \
