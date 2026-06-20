@@ -48,7 +48,7 @@ status=$(curl -sS -o "$BODY" -w '%{http_code}' -X POST \
   "$KEYCLOAK_URL/realms/transcript/protocol/openid-connect/token" \
   -d grant_type=client_credentials \
   -d client_id=transcript-e2e \
-  -d "client_secret=e2e-dev-secret")
+  -d "client_secret=$CLIENT_SECRET")
 [ "$status" = "200" ] || fail "token expected 200, got $status: $(cat "$BODY")"
 token=$(jq -r '.access_token' < "$BODY")
 [ -n "$token" ] && [ "$token" != "null" ] || fail "no access_token: $(cat "$BODY")"
