@@ -1,8 +1,30 @@
 services/*/app.jar
 target/
+*.class
+
 # Synced from ../transcript-approval-ui by scripts/sync-realm.sh
 infra/keycloak/realm-export.json
+
 # Local-only working files (workspace convention — never committed)
 CLAUDE.md
 .claude/
 docs/superpowers/
+sdd/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.factorypath
+.settings/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+*.log
+logs/
