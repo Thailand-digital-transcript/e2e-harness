@@ -1,0 +1,41 @@
+# demo/docker-compose.demo.yml — overlay on the base docker-compose.yml that turns
+# the test topology into a self-serve demo. Always layer it on the base, run from
+# the repo root so relative paths resolve:
+#   docker compose -f docker-compose.yml -f demo/docker-compose.demo.yml up -d --build
+services:
+  # Expose the orchestrator REST API to the host for smoke.sh + batch inspection.
+  transcript-orchestrator:
+    ports:
+      - "8095:8095"
+
+  # Expose the MinIO S3 API (9000) and console (9001) so users can browse and
+  # download the generated PDF/A-3b and sealed XML from the host browser.
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  # One-shot: ingest a transcript + open/close a batch so the approval queue is
+  # populated the moment a user logs in. Stops at PENDING_REGISTRAR (no approvals).
+  # alpine + apk keeps it image-build-free; the ~3–5s apk cost is acceptable here.
+  demo-seed:
+    image: alpine:3.20
+    depends_on:
+      transcript-processing:
+        condition: service_healthy
+      transcript-orchestrator:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    environment:
+      PROCESSING_URL: http://transcript-processing:8085
+      ORCHESTRATOR_URL: http://transcript-orchestrator:8095
+      KEYCLOAK_URL: http://keycloak:8080
+      CLIENT_SECRET: e2e-dev-secret
+      INSTITUTION_CODE: "01110"
+      FIXTURE_PATH: /fixtures/input.xml
+    volumes:
+      - ./demo/seed.sh:/seed.sh:ro
+      - ./src/test/resources/fixtures/Transcript_v2.0.xml:/fixtures/input.xml:ro
+    entrypoint: ["/bin/sh", "-c", "apk add --no-cache bash curl jq >/dev/null && bash /seed.sh"]
+    restart: "no"
