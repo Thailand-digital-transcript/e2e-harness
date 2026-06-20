@@ -66,8 +66,8 @@ import + six Spring Boot JVMs).
 ./demo/ingest.sh path/to/YourTranscript.xml
 ```
 
-This opens and closes a fresh batch, leaving it at `PENDING_REGISTRAR` for you to
-approve.
+This opens and closes a fresh batch for a transcript with a **new**
+`<tc:TranscriptID>`, leaving it at `PENDING_REGISTRAR` for you to approve.
 
 **De-duplication:** `transcript-processing` keys each transcript by its
 `<tc:TranscriptID>`. Ingesting a transcript whose `TranscriptID` already exists is
