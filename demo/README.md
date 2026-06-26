@@ -32,11 +32,14 @@ base + a one-shot `demo-seed`), and blocks until the seed job has placed one bat
 at `PENDING_REGISTRAR`. On a cold start this takes several minutes (Keycloak realm
 import + six Spring Boot JVMs).
 
-> **Don't run the demo and `mvn verify` at the same time.** The automated harness
-> (`mvn verify`) and this demo share the same topology but both bind host ports
-> (`8080`/`8081` from the base; `8095`/`9000`/`9001` from the demo overlay), so
-> running them concurrently causes a port clash. Run one at a time — tear the demo
-> down with `./demo/down.sh` before `mvn verify`, and vice versa.
+> **The three workflows coexist cleanly.** The base `docker-compose.yml` is
+> intentionally port-less so `mvn verify` can run without host-port conflicts.
+> `./scripts/dev-up.sh` layers `docker-compose.dev.yml` for the manual UI
+> workflow; `./demo/up.sh` layers `demo/docker-compose.demo.yml` to add the
+> `demo-seed` job and the MinIO/orchestrator ports. You can leave the manual
+> dev stack running and run `mvn verify` against it. **Do not** run
+> `./demo/up.sh` and `./scripts/dev-up.sh` at the same time — they each bind
+> `8081` and would collide. Tear the demo down with `./demo/down.sh` first.
 
 ## Walkthrough
 
@@ -99,11 +102,24 @@ visible to `registrar1` / `dean1`.
 
 ## How it works
 
-`demo/docker-compose.demo.yml` is an **overlay** on the repo's base
-`docker-compose.yml` — it only adds host port mappings and the one-shot
-`demo-seed` container; the 11-service topology is inherited unchanged. `demo-seed`
-runs `demo/seed.sh`, which ingests the transcript, mints a `transcript-e2e`
+The repo has three compose paths that share one base topology. The base
+`docker-compose.yml` is intentionally port-less — services expose container
+ports only — so any of the following can boot without host-port collisions
+between each other:
+
+| Workflow | Command | What it adds |
+|----------|---------|--------------|
+| Integration test | `mvn verify` | Testcontainers-managed stack on its own ambassador network |
+| Manual dev | `./scripts/dev-up.sh` | `docker-compose.dev.yml` overlay → host port bindings (8080/8081/8085/8088/8090/8095) |
+| Demo | `./demo/up.sh` | `demo/docker-compose.demo.yml` overlay → MinIO console (9000/9001), orchestrator API (8095), and the one-shot `demo-seed` container |
+
+`demo/docker-compose.demo.yml` only adds what the demo needs beyond the base:
+the orchestrator REST port (8095) for `smoke.sh` and batch inspection, MinIO
+(9000/9001) so users can browse the generated PDF/A-3b and sealed XML from
+the host browser, and the one-shot `demo-seed` container. The 11-service
+topology is inherited unchanged from the base file. `demo-seed` runs
+`demo/seed.sh`, which ingests the transcript, mints a `transcript-e2e`
 client-credentials token, and opens + closes a batch — stopping at
 `PENDING_REGISTRAR` so the approvals are left for you. All wrappers run
-`docker compose -f docker-compose.yml -f demo/docker-compose.demo.yml` from the
-repo root.
+`docker compose -f docker-compose.yml -f demo/docker-compose.demo.yml` from
+the repo root.
