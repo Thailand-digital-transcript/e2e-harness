@@ -28,3 +28,5 @@ sdd/
 ._*
 *.log
 logs/
+.worktrees
+etax/
