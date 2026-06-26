@@ -53,25 +53,30 @@ services:
       retries: 10
 
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0.5
+    image: quay.io/keycloak/keycloak:26.6.3
     command: ["start-dev", "--import-realm"]
     environment:
+      # KC_BOOTSTRAP_ADMIN_* is the correct bootstrap-admin var on Keycloak 26
+      # (it replaced KEYCLOAK_ADMIN_*); admin/admin reaches the master console.
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      # Pin the token issuer to the browser-facing URL. KC_HOSTNAME_STRICT=false
-      # lets the token/JWKS endpoints be reached via any host (the Testcontainers
-      # ambassador port, the in-network keycloak:8080) while iss stays localhost:8080.
-      KC_HOSTNAME_URL: http://localhost:8080
-      KC_HOSTNAME_STRICT: "false"
+      # Pin the token issuer to the browser-facing URL. Hostname v2 (Keycloak 25+)
+      # collapses the old KC_HOSTNAME_URL + KC_HOSTNAME_STRICT=false pair into a
+      # single absolute-URL KC_HOSTNAME: frontend URLs (the iss claim) are fixed to
+      # localhost:8080 while start-dev still serves requests arriving via any host
+      # (the Testcontainers ambassador port, the in-network keycloak:8080). The
+      # orchestrator fetches JWKS from an explicit KEYCLOAK_JWKS_URI (keycloak:8080),
+      # not OIDC discovery, so Keycloak's backchannel advertising is irrelevant here.
+      KC_HOSTNAME: http://localhost:8080
       KC_HEALTH_ENABLED: "true"
     volumes:
       - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     healthcheck:
       # The Keycloak image ships bash (kc.sh uses it), so /dev/tcp works without curl.
       # The realm endpoint returns 200 only after --import-realm completes.
-      # Use HTTP/1.1 with an explicit Host: header — Keycloak 24.0.5's
-      # VertxResteasyReactiveRequestContext.getRequestHost NPEs on HTTP/1.0
-      # requests without a Host header, so the healthcheck would always fail.
+      # Use HTTP/1.1 with an explicit Host: header — Keycloak's Vert.x request
+      # context NPEs on HTTP/1.0 requests that omit a Host header, so a bare
+      # /dev/tcp GET without it would make the healthcheck always fail.
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /realms/transcript HTTP/1.1\\r\\nHost: localhost:8080\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | head -n1 | grep -q 200"]
       interval: 10s
       timeout: 5s

@@ -66,8 +66,8 @@ mvn verify
   (copies the `-exec.jar` into `services/<svc>/app.jar`).
 - `./scripts/sync-realm.sh` — syncs the Keycloak dev realm from
   `../transcript-approval-ui/keycloak/realm-export.json` into
-  `infra/keycloak/realm-export.json` (strips `organizationsEnabled` for 24.0.5
-  compatibility).
+  `infra/keycloak/realm-export.json` (strips `organizationsEnabled`, an
+  organization-support flag the harness doesn't use).
 
 Run a single integration test:
 
@@ -150,7 +150,7 @@ scripts/{prepare.sh, build-jars.sh, gen-keystores.sh, sync-realm.sh}
 | `kafka` | `confluentinc/cp-kafka:7.6.0` (KRaft) | 9092 | Event broker |
 | `minio` | `minio/minio` | 9000 (api), 9001 (console) | S3-compatible object store |
 | `minio-init` | `minio/mc` | — | One-shot: creates the three buckets |
-| `keycloak` | `quay.io/keycloak/keycloak:24.0.5` | 8080 | OIDC issuer; realm `transcript` imported on boot |
+| `keycloak` | `quay.io/keycloak/keycloak:26.6.3` | 8080 | OIDC issuer; realm `transcript` imported on boot |
 | `csc` | built (`eidasremotesigning`) | 9000 | eIDAS / remote signing service |
 | `csc-seed` | `postgres:16` | — | One-shot: loads CSC credentials |
 | `transcript-processing` | built | 8085 | Ingests transcript XML |
@@ -196,7 +196,7 @@ base64-encodes payloads so arbitrary JSON survives the shell.
   cold start; the healthcheck allows a 30s `start_period` and 20 retries
   (≈3.5 min). If it still fails, check `docker compose logs keycloak` for the
   import error (the `organizationsEnabled` field is stripped by
-  `sync-realm.sh` for 24.0.5 compat).
+  `sync-realm.sh`, as the harness doesn't use organizations).
 - **401 from `transcript-orchestrator`** — the harness now uses Keycloak JWTs;
   ensure `./scripts/prepare.sh` was run so the realm is up, and that the
   orchestrator's `KEYCLOAK_ISSUER` and `KEYCLOAK_JWKS_URI` envs resolve from
