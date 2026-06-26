@@ -66,8 +66,6 @@ services:
       KC_HEALTH_ENABLED: "true"
     volumes:
       - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
-    ports:
-      - "8080:8080"
     healthcheck:
       # The Keycloak image ships bash (kc.sh uses it), so /dev/tcp works without curl.
       # The realm endpoint returns 200 only after --import-realm completes.
@@ -140,10 +138,6 @@ services:
   transcript-processing:
     build:
       context: ./services/transcript-processing
-    # Expose to host for the monitoring scripts (./scripts/list-batches.sh, etc.).
-    # The Testcontainers IT does NOT use these mappings — it runs on its own network.
-    ports:
-      - "8085:8085"
     depends_on:
       postgres:
         condition: service_healthy
@@ -182,10 +176,6 @@ services:
   transcript-orchestrator:
     build:
       context: ./services/transcript-orchestrator
-    # Expose to host for the monitoring scripts (./scripts/list-batches.sh, etc.).
-    # The Testcontainers IT does NOT use these mappings — it runs on its own network.
-    ports:
-      - "8095:8095"
     depends_on:
       postgres:
         condition: service_healthy
@@ -225,10 +215,6 @@ services:
   transcript-signing:
     build:
       context: ./services/transcript-signing
-    # Expose to host for the monitoring scripts (./scripts/list-batches.sh, etc.).
-    # The Testcontainers IT does NOT use these mappings — it runs on its own network.
-    ports:
-      - "8088:8088"
     depends_on:
       postgres:
         condition: service_healthy
@@ -270,10 +256,6 @@ services:
   transcript-pdf-generation:
     build:
       context: ./services/transcript-pdf-generation
-    # Expose to host for the monitoring scripts (./scripts/list-batches.sh, etc.).
-    # The Testcontainers IT does NOT use these mappings — it runs on its own network.
-    ports:
-      - "8090:8090"
     depends_on:
       postgres:
         condition: service_healthy
@@ -305,8 +287,6 @@ services:
   transcript-approval-ui:
     build:
       context: ../transcript-approval-ui
-    ports:
-      - "8081:80"
     depends_on:
       transcript-orchestrator:
         condition: service_healthy

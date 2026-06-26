@@ -1,0 +1,41 @@
+# Host-port override for the manual dev workflow.
+#
+# The base docker-compose.yml is intentionally port-less — it must boot the
+# same stack under Testcontainers (CrossServiceHappyPathIT) without colliding
+# with host bindings owned by a running manual dev session. IT access uses
+# Testcontainers' ambassador layer (ENV.getServiceHost/getServicePort), so
+# no host mappings are needed for tests.
+#
+# This override re-adds the host bindings for browser-based UI testing and
+# the host-side monitoring scripts (./scripts/list-batches.sh, etc.).
+# Opt in explicitly:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# The wrapper script scripts/dev-up.sh does the same thing with a shorter name.
+
+services:
+
+  keycloak:
+    ports:
+      - "8080:8080"
+
+  transcript-processing:
+    ports:
+      - "8085:8085"
+
+  transcript-orchestrator:
+    ports:
+      - "8095:8095"
+
+  transcript-signing:
+    ports:
+      - "8088:8088"
+
+  transcript-pdf-generation:
+    ports:
+      - "8090:8090"
+
+  transcript-approval-ui:
+    ports:
+      - "8081:80"

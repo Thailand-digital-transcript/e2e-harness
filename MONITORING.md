@@ -2,6 +2,12 @@
 
 This guide shows how to monitor batch state changes and watch the saga progress in real-time.
 
+**Prerequisite:** the manual dev stack must be running with host port mappings.
+Use `./scripts/dev-up.sh --build` (NOT plain `docker compose up` — that boots
+the port-less base file). The scripts below hit `http://localhost:{PORT}` for
+the orchestrator, Keycloak, etc., so the host bindings from
+`docker-compose.dev.yml` must be active.
+
 ## Quick Start
 
 ### 1. List all batches

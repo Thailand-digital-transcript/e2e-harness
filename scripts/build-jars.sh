@@ -28,4 +28,5 @@ cp "$CSC_DIR/target/"eidasremotesigning-*.jar "$ROOT/services/eidasremotesigning
 echo "  → services/eidasremotesigning/app.jar"
 
 echo ""
-echo "All JARs ready. Run: docker compose up --build"
+echo "All JARs ready. For manual dev: ./scripts/dev-up.sh --build"
+echo "                    For IT:        mvn verify"

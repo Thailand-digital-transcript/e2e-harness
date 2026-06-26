@@ -84,13 +84,20 @@ mvn test                          # surefire; excludes *IT.java
 Bring the stack up manually for poking around (services stay up, no test run):
 
 ```bash
-docker compose up --build
+./scripts/dev-up.sh --build
+# or, equivalently:
+# docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-To exercise the full saga through the UI manually: `docker compose up --build`,
-browse `http://localhost:8081`, log in as `registrar1`/`dean1` (realm
-`transcript`, dev-only secret `e2e-dev-secret`), then render and approve a batch
-through the UI.
+To exercise the full saga through the UI manually: `dev-up.sh --build`,
+browse `http://localhost:8081`, log in as `registrar1` (password
+`password` — see infra/keycloak/realm-export.json), then render and approve
+a batch through the UI.
+
+The base `docker-compose.yml` is intentionally port-less so the same stack
+can boot under Testcontainers (`mvn verify`) without colliding with a manual
+dev session. `docker-compose.dev.yml` re-adds the host bindings for the
+manual workflow. `dev-up.sh` is just a wrapper that loads both files.
 
 > **Order matters:** `mvn verify` requires the keystores, JARs, and synced realm
 > to be present first, or the compose stack will fail to start.
@@ -179,8 +186,12 @@ base64-encodes payloads so arbitrary JSON survives the shell.
   Keycloak realm are missing. Re-run `./scripts/prepare.sh` first (it chains
   gen-keystores + build-jars + sync-realm).
 - **Stale service behavior after rebuilding JARs** — the integration test forces
-  image rebuilds (`withBuild(true)`), but a manual `docker compose up` reuses
-  cached images. Use `docker compose up --build`.
+  image rebuilds (`withBuild(true)`), but a manual `./scripts/dev-up.sh` reuses
+  cached images. Use `./scripts/dev-up.sh --build`.
+- **`./scripts/list-batches.sh` returns "API unavailable"** — the manual
+  stack is up but without host port mappings (e.g. you ran `docker compose up`
+  instead of `./scripts/dev-up.sh`). Re-run via the wrapper, or layer in
+  `docker-compose.dev.yml` manually.
 - **Keycloak never becomes healthy** — the realm import can take a while on a
   cold start; the healthcheck allows a 30s `start_period` and 20 retries
   (≈3.5 min). If it still fails, check `docker compose logs keycloak` for the
