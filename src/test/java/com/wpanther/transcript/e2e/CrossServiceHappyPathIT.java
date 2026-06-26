@@ -14,14 +14,17 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -297,6 +300,28 @@ class CrossServiceHappyPathIT {
         assertThat(xmlObjects.contents().get(0).size())
                 .as("Sealed XML object must not be empty")
                 .isGreaterThan(0);
+
+        // ── Step 11: Assert the FINAL artifact is a PAdES-signed PDF ──────────
+        // The PDF signing phase must seal the rendered PDF/A-3b with PAdES — not
+        // re-sign the sealed XML. Locate PDF/<batch>/<doc>/signed.pdf and verify the
+        // bytes are a real PDF carrying a PAdES signature (/ByteRange + ETSI.CAdES).
+        String signedPdfKey = xmlObjects.contents().stream()
+                .map(S3Object::key)
+                .filter(k -> k.startsWith("PDF/") && k.endsWith("signed.pdf"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "No PAdES-signed PDF (PDF/**/signed.pdf) in signed-transcripts; keys="
+                                + xmlObjects.contents().stream().map(S3Object::key).toList()));
+        byte[] signedPdf = s3.getObjectAsBytes(GetObjectRequest.builder()
+                .bucket("signed-transcripts").key(signedPdfKey).build()).asByteArray();
+        String pdfText = new String(signedPdf, StandardCharsets.ISO_8859_1);
+        assertThat(pdfText)
+                .as("Final signing artifact must be a real PDF, not XML")
+                .startsWith("%PDF");
+        assertThat(pdfText)
+                .as("Final PDF must carry a PAdES signature (/ByteRange + ETSI.CAdES.detached)")
+                .contains("/ByteRange")
+                .contains("ETSI.CAdES.detached");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
