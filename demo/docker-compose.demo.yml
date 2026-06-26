@@ -2,6 +2,11 @@
 # the test topology into a self-serve demo. Always layer it on the base, run from
 # the repo root so relative paths resolve:
 #   docker compose -f docker-compose.yml -f demo/docker-compose.demo.yml up -d --build
+#
+# The base docker-compose.yml is intentionally port-less (so Testcontainers can
+# boot it without host collisions). This overlay re-adds the host bindings the
+# demo needs: keycloak admin (8080), the approval UI (8081), the orchestrator
+# REST API (8095) for smoke checks, and the MinIO console (9001).
 services:
   # Expose the orchestrator REST API to the host for smoke.sh + batch inspection.
   transcript-orchestrator:
@@ -14,6 +19,17 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+
+  # Expose Keycloak admin so users can poke the realm from the host browser
+  # (per the demo README's "Poke Keycloak" step).
+  keycloak:
+    ports:
+      - "8080:8080"
+
+  # Expose the approval UI so users can approve batches from the host browser.
+  transcript-approval-ui:
+    ports:
+      - "8081:80"
 
   # One-shot: ingest a transcript + open/close a batch so the approval queue is
   # populated the moment a user logs in. Stops at PENDING_REGISTRAR (no approvals).
