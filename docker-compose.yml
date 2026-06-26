@@ -140,6 +140,10 @@ services:
   transcript-processing:
     build:
       context: ./services/transcript-processing
+    # Expose to host for the monitoring scripts (./scripts/list-batches.sh, etc.).
+    # The Testcontainers IT does NOT use these mappings — it runs on its own network.
+    ports:
+      - "8085:8085"
     depends_on:
       postgres:
         condition: service_healthy
@@ -178,6 +182,10 @@ services:
   transcript-orchestrator:
     build:
       context: ./services/transcript-orchestrator
+    # Expose to host for the monitoring scripts (./scripts/list-batches.sh, etc.).
+    # The Testcontainers IT does NOT use these mappings — it runs on its own network.
+    ports:
+      - "8095:8095"
     depends_on:
       postgres:
         condition: service_healthy
@@ -217,6 +225,10 @@ services:
   transcript-signing:
     build:
       context: ./services/transcript-signing
+    # Expose to host for the monitoring scripts (./scripts/list-batches.sh, etc.).
+    # The Testcontainers IT does NOT use these mappings — it runs on its own network.
+    ports:
+      - "8088:8088"
     depends_on:
       postgres:
         condition: service_healthy
@@ -258,6 +270,10 @@ services:
   transcript-pdf-generation:
     build:
       context: ./services/transcript-pdf-generation
+    # Expose to host for the monitoring scripts (./scripts/list-batches.sh, etc.).
+    # The Testcontainers IT does NOT use these mappings — it runs on its own network.
+    ports:
+      - "8090:8090"
     depends_on:
       postgres:
         condition: service_healthy
