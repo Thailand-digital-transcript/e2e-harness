@@ -91,6 +91,32 @@ visible to `registrar1` / `dean1`.
 ./demo/down.sh    # stop the stack and remove volumes
 ```
 
+## Troubleshooting
+
+**Realm edits require a `down -v` to take effect.** Keycloak runs `start-dev
+--import-realm`, which imports `infra/keycloak/realm-export.json` **only on a
+fresh boot** — when the realm doesn't already exist in its embedded H2 DB. If you
+edit the realm file (or re-run `./scripts/prepare.sh` / `sync-realm.sh`) while the
+stack is up, a plain restart will **not** re-import: `--import-realm` sees the
+realm already present and skips it, so the container keeps running the stale
+config. The `:ro` bind mount makes the in-container file *look* updated, which is
+misleading — the running realm in H2 is what counts.
+
+Symptom seen in practice: logging out from <http://localhost:8081/queue> returns
+**"Invalid redirect uri"** because the live `transcript-approval-ui` client is
+missing `http://localhost:8081/queue` in its `post.logout.redirect.uris`, even
+though the on-disk realm file lists it.
+
+Fix — force a clean re-import:
+
+```bash
+./demo/down.sh   # removes containers + volumes (wipes the stale H2 realm DB)
+./demo/up.sh     # fresh boot re-imports the corrected realm
+```
+
+`-v` also wipes Postgres and MinIO, so re-seed afterward (`./demo/up.sh` already
+runs `demo-seed`; use `./demo/ingest.sh` for additional batches).
+
 ## Endpoints & credentials
 
 | Surface | URL | Credentials |
