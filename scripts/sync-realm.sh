@@ -1,23 +1,19 @@
 #!/usr/bin/env bash
 # Sync the dev realm from the UI repo (single source of truth) into infra/keycloak/.
 set -euo pipefail
-SRC="${APPROVAL_UI_DIR:-../transcript-approval-ui}/keycloak/realm-export.json"
+UI_DIR="${APPROVAL_UI_DIR:-../transcript-approval-ui}"
+SRC="$UI_DIR/keycloak/realm-export.json"
+FILTER="$UI_DIR/keycloak/realm-transform.jq"
 DEST="infra/keycloak/realm-export.json"
 mkdir -p "$(dirname "$DEST")"
-# Two fix-ups are applied during the copy; the UI repo stays untouched:
+# The transform (post.logout.redirect.uris "," -> "##") lives in the UI repo's
+# keycloak/realm-transform.jq, shared with that repo's own transcript-keycloak
+# image build so the two paths can never apply different filters. See that
+# file for why the transform is needed.
 #
-# 1. Strip `organizationsEnabled` — the UI realm export carries it for the
-#    organization-support feature, which the harness's demo/IT flows don't use
-#    (demo users are plain realm users keyed by an institution_code attribute).
-#
-# 2. Normalize the `post.logout.redirect.uris` separator from "," to "##".
-#    Keycloak stores multivalued client attributes as a `##`-separated string,
-#    so a comma-joined value is parsed as one giant URI that matches nothing —
-#    every RP-initiated logout then fails with "Invalid redirect uri". The UI
-#    source realm uses commas; rewrite them to `##` so logout actually works.
-jq 'del(.organizationsEnabled)
-  | .clients |= map(
-      if .attributes and .attributes["post.logout.redirect.uris"]
-      then .attributes["post.logout.redirect.uris"] |= gsub(",";"##")
-      else . end)' "$SRC" > "$DEST"
-echo "synced realm: $SRC -> $DEST (organizationsEnabled stripped; post-logout URIs joined with ##)"
+# organizationsEnabled is NOT stripped here (it was, until this change): that
+# was a Keycloak 24.0.5-only workaround. Verified empirically against the
+# 26.6.3 pinned in docker-compose.yml — the realm imports fine without the
+# strip.
+jq -f "$FILTER" "$SRC" > "$DEST"
+echo "synced realm: $SRC -> $DEST (via $FILTER)"
