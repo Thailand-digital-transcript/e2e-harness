@@ -11,7 +11,7 @@ cd "$REPO_ROOT"
 COMPOSE=(docker compose -f docker-compose.yml -f demo/docker-compose.demo.yml)
 
 # Refuse if the stack is not already up — otherwise `compose run` would pull up the
-# whole 11-container stack just to ingest one batch. Start it with ./demo/up.sh first.
+# whole 13-container stack just to ingest one batch. Start it with ./demo/up.sh first.
 if ! "${COMPOSE[@]}" ps --status running --services 2>/dev/null | grep -qx 'transcript-orchestrator'; then
   echo "demo: stack is not running — start it with ./demo/up.sh first." >&2
   exit 1

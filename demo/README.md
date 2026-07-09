@@ -12,6 +12,7 @@ completed signed PDF/A-3b — all in the browser.
 
 - Docker with the Compose **v2.20+** plugin.
 - JDK 21 + Maven, needed once to build the service JARs.
+- Host `curl` + `jq`, used by `./demo/smoke.sh`.
 - The sibling service repos checked out alongside `e2e-harness/`:
   `transcript-processing/`, `transcript-orchestrator/`, `transcript-signing/`,
   `transcript-pdf-generation/`, `transcript-approval-ui/`, and
@@ -27,36 +28,43 @@ completed signed PDF/A-3b — all in the browser.
 ./demo/up.sh
 ```
 
-`./demo/up.sh` builds the images, starts the 12-container demo stack (the 11-service
+`./demo/up.sh` builds the images, starts the 13-container demo stack (the 12-service
 base + a one-shot `demo-seed`), and blocks until the seed job has placed one batch
 at `PENDING_REGISTRAR`. On a cold start this takes several minutes (Keycloak realm
-import + six Spring Boot JVMs).
+import + five Spring Boot JVMs; the approval UI is an nginx image, not a JVM).
 
 > **The three workflows coexist cleanly.** The base `docker-compose.yml` is
 > intentionally port-less so `mvn verify` can run without host-port conflicts.
 > `./scripts/dev-up.sh` layers `docker-compose.dev.yml` for the manual UI
 > workflow; `./demo/up.sh` layers `demo/docker-compose.demo.yml` to add the
-> `demo-seed` job and the MinIO/orchestrator ports. You can leave the manual
-> dev stack running and run `mvn verify` against it. **Do not** run
-> `./demo/up.sh` and `./scripts/dev-up.sh` at the same time — they each bind
-> `8081` and would collide. Tear the demo down with `./demo/down.sh` first.
+> `demo-seed` job and the Keycloak/UI/orchestrator/MinIO ports. `mvn verify`
+> boots its **own** Testcontainers-managed stack from the port-less base file,
+> so it binds no host ports and can run alongside a manual dev stack (it does
+> not test *against* that stack). **Do not** run `./demo/up.sh` and
+> `./scripts/dev-up.sh` at the same time — they both bind `8080`, `8081`, and
+> `8095` and would collide. Tear the demo down with `./demo/down.sh` first.
 
 ## Walkthrough
 
 1. Open the **Approval UI** at <http://localhost:8081> and log in as **`registrar1`**
-   (realm `transcript`). The seeded batch is in the queue — click **Approve**. It is
-   a one-button approve: the UI sends
-   `{"decision":"APPROVE","rejectedDocumentIds":null,"rejectionReason":null}` to the
-   role-gated `POST /api/v1/batches/{id}/decision`.
-2. Log out, log in as **`dean1`**, and **Approve** the same batch (now at
-   `PENDING_DEAN`). The order is enforced server-side — a premature dean click just
-   returns a `409`.
+   (realm `transcript`). The seeded batch is in the queue — click its row to open the
+   batch detail page, click **Approve or reject**, leave the dialog on **APPROVE**,
+   and submit. The UI sends `{"decision":"APPROVE","rejectedDocumentIds":[]}` to the
+   role-gated `POST /api/v1/batches/{id}/decision` (whole-batch decisions carry an
+   empty rejection set, and the `rejectionReason` key is omitted entirely).
+2. Log out, log in as **`dean1`**, and approve the same batch the same way (it is now
+   at `PENDING_DEAN`). The order is enforced server-side — a premature dean click
+   returns a `409`, which the UI surfaces as a *"This batch has already moved on"*
+   toast.
 3. **Wait a few minutes.** After the dean approval the saga runs signing (XAdES) →
    seal (XAdES + PAdES) → PDF generation. The transition to `COMPLETED` can take up
    to ~2 minutes — not because of a timestamp authority (signing is B-B, no TSA) but
    from cumulative saga cost: several CSC remote-signing round-trips, Kafka hops plus
    the outbox relay poll interval, and the PDF/A-3b render + veraPDF gate. The batch
-   is **not** stalled; the UI refreshes to `COMPLETED` when it lands.
+   is **not** stalled. Note that **nothing auto-refreshes into `COMPLETED`**: the
+   batch detail page polls only while the batch sits at an approver gate, then
+   redirects you back to `/queue`, and neither `/queue` nor `/monitor` polls. Reload
+   `/monitor` (or re-run `./demo/smoke.sh`-style API calls) to watch it land.
 4. **Inspect the artifacts** in the **MinIO console** at <http://localhost:9001>
    (`minioadmin` / `minioadmin`): bucket `transcript-pdfs` holds the generated
    PDF/A-3b; `signed-transcripts` holds the sealed XML.
@@ -137,13 +145,15 @@ between each other:
 |----------|---------|--------------|
 | Integration test | `mvn verify` | Testcontainers-managed stack on its own ambassador network |
 | Manual dev | `./scripts/dev-up.sh` | `docker-compose.dev.yml` overlay → host port bindings (8080/8081/8085/8088/8090/8095) |
-| Demo | `./demo/up.sh` | `demo/docker-compose.demo.yml` overlay → MinIO console (9000/9001), orchestrator API (8095), and the one-shot `demo-seed` container |
+| Demo | `./demo/up.sh` | `demo/docker-compose.demo.yml` overlay → Keycloak (8080), approval UI (8081), orchestrator API (8095), MinIO S3 + console (9000/9001), and the one-shot `demo-seed` container |
 
 `demo/docker-compose.demo.yml` only adds what the demo needs beyond the base:
-the orchestrator REST port (8095) for `smoke.sh` and batch inspection, MinIO
-(9000/9001) so users can browse the generated PDF/A-3b and sealed XML from
-the host browser, and the one-shot `demo-seed` container. The 11-service
-topology is inherited unchanged from the base file. `demo-seed` runs
+host bindings for Keycloak (8080) and the approval UI (8081) so the walkthrough
+is reachable from a browser, the orchestrator REST port (8095) for `smoke.sh`
+and batch inspection, MinIO's S3 API (9000) and console (9001) so users can
+browse the generated PDF/A-3b and sealed XML, and the one-shot `demo-seed`
+container. The 12-service topology is otherwise inherited from the base file —
+the overlay changes nothing but ports. `demo-seed` runs
 `demo/seed.sh`, which ingests the transcript, mints a `transcript-e2e`
 client-credentials token, and opens + closes a batch — stopping at
 `PENDING_REGISTRAR` so the approvals are left for you. All wrappers run

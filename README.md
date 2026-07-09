@@ -15,9 +15,9 @@ seeding scripts. The service source code lives in **sibling repositories** (see
 ## Prerequisites
 
 - **JDK 21** and **Maven** (to compile and run the harness)
-- **Docker** with the Compose v2 plugin (the integration tests boot an 11-container
+- **Docker** with the Compose v2 plugin (the integration tests boot a 12-container
   stack via [Testcontainers](https://java.testcontainers.org/))
-- Enough CPU/RAM for ~6 Spring Boot JVMs + Postgres + Kafka + MinIO + Keycloak
+- Enough CPU/RAM for 5 Spring Boot JVMs + Postgres + Kafka + MinIO + Keycloak
   concurrently
 - The sibling service repositories checked out alongside this one (below),
   including the `transcript-approval-ui` repo (Keycloak realm source of truth)
@@ -138,7 +138,7 @@ infra/
 ├── postgres/init.sh               # creates per-service databases
 ├── csc/{seed.sql, keystores/}     # CSC credentials + signing keystores
 └── keycloak/realm-export.json     # dev realm (synced from UI repo by prepare.sh)
-docker-compose.yml                 # the 11-container stack
+docker-compose.yml                 # the 12-container stack
 scripts/{prepare.sh, build-jars.sh, gen-keystores.sh, sync-realm.sh}
 ```
 

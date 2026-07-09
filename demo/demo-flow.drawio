@@ -1,0 +1,111 @@
+<mxfile host="app.diagrams.net" modified="2026-07-09T00:00:00.000Z" agent="Claude" version="21.0.0">
+  <diagram name="Demo-Flow" id="demo-flow">
+    <mxGraphModel dx="1500" dy="820" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1960" pageHeight="770" math="0" shadow="0" defaultFontFamily="Noto Sans JP">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== edges (background) ===== -->
+        <mxCell id="e_seed_proc" value="②&#10;POST /transcripts&#10;→ 202" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#1f5c99;strokeColor=#6c8ebf;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="seed" target="proc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_proc_orch" value="TranscriptItem&#10;(Kafka)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#6a4fbf;strokeColor=#9673a6;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="proc" target="orch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_human_ui" value="③ registrar1&#10;④ dean1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#666666;strokeColor=#999999;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="human" target="ui">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ui_orch" value="POST&#10;/batches/{id}/decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#1f5c99;strokeColor=#6c8ebf;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ui" target="orch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ui_kc" value="OIDC + PKCE" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;fontFamily=Noto Sans JP;fontSize=11;fontColor=#666666;strokeColor=#999999;strokeWidth=1.5;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ui" target="kc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_orch_sign" value="saga.command.&#10;transcript-signing" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#6a4fbf;strokeColor=#9673a6;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="orch" target="sign">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sign_pdf" value="transcript.signed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#6a4fbf;strokeColor=#9673a6;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="sign" target="pdf">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sign_csc" value="signHash × 3&#10;registrar · dean · seal" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#b09500;startArrow=classic;endArrow=classic;strokeColor=#d6b656;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="sign" target="csc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_pdf_minio" value="PDF/A-3b&#10;(veraPDF gate)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#b85450;strokeColor=#b85450;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="pdf" target="minio">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== seed lane ===== -->
+        <mxCell id="seed" value="demo-seed  (one-shot)&#10;&#10;./demo/up.sh · seed.sh&#10;client-credentials token&#10;transcript-e2e / e2e-dev-secret" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="130" width="200" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="proc" value="transcript-processing&#10;:8085&#10;&#10;dedup by &lt;tc:TranscriptID&gt;&#10;source XML → signed-transcripts/" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="130" width="230" height="105" as="geometry" />
+        </mxCell>
+
+        <!-- ===== human lane ===== -->
+        <mxCell id="human" value="Human (browser)&#10;&#10;registrar → dean&#10;order enforced&#10;server-side (409)" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="265" width="200" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" value="transcript-approval-ui&#10;:8081  (nginx + React)&#10;&#10;queue → batch detail →&#10;&quot;Approve or reject&quot; dialog" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="265" width="230" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="kc" value="Keycloak :8080&#10;realm transcript · admin/admin" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=12;arcSize=15;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="415" width="230" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ===== saga row ===== -->
+        <mxCell id="orch" value="transcript-orchestrator&#10;:8095&#10;&#10;BatchStateMachine&#10;PENDING_REGISTRAR&#10;→ PENDING_DEAN&#10;→ SIGNING → COMPLETED" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="790" y="160" width="250" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="orch_note" value="②  demo-seed POSTs /batches → /items → /close,&#10;stopping at PENDING_REGISTRAR (no approvals)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Noto Sans JP;fontSize=11;fontColor=#1f5c99;" vertex="1" parent="1">
+          <mxGeometry x="770" y="350" width="290" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sign" value="transcript-signing&#10;:8088&#10;&#10;registrar XAdES&#10;dean XAdES&#10;university seal&#10;(XAdES + PAdES)" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="160" width="230" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="pdf" value="transcript-pdf-generation&#10;:8090&#10;&#10;FOP render&#10;sealed XML embedded&#10;veraPDF conformance gate" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="160" width="240" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- ===== CSC signing service ===== -->
+        <mxCell id="csc" value="eidasremotesigning · CSC v2 RSSP  :9000&#10;&#10;XAdES-BASELINE-B  ·  PAdES-B-B&#10;base64 digests only — never document bytes&#10;B-B ⇒ claimed SigningTime, no TSA is called" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=12;arcSize=10;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="430" width="290" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ===== MinIO buckets ===== -->
+        <mxCell id="minio" value="MinIO (S3 object store)" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;fontColor=#8a3b38;arcSize=6;fillColor=#ffffff;strokeColor=#b85450;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="390" width="450" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="bkt_in" value="transcripts/&#10;processing default bucket" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=11;arcSize=15;fillColor=#f5f5f5;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="430" width="200" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="bkt_xml" value="signed-transcripts/&#10;source + sealed XAdES XML" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=11;arcSize=15;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1680" y="430" width="200" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="bkt_pdf" value="transcript-pdfs/&#10;PAdES · PDF/A-3b (+embedded XML)" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=11;arcSize=15;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="492" width="200" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="minio_note" value="⑥ Console → http://localhost:9001&#10;S3 API → :9000&#10;minioadmin / minioadmin" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Noto Sans JP;fontSize=11;fontColor=#8a3b38;" vertex="1" parent="1">
+          <mxGeometry x="1680" y="492" width="200" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="minio_note2" value="Processing writes the SOURCE XML to signed-transcripts/ (not transcripts/) — signing and pdf-gen both read from there." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Noto Sans JP;fontSize=11;fontColor=#8a3b38;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="554" width="410" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== titles ===== -->
+        <mxCell id="t_title" value="Digital Transcript — Demo Flow (e2e-harness)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Noto Sans JP;fontSize=26;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="24" width="1100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="t_sub" value="Human-in-the-loop approval saga:  ingest → batch → registrar approve → dean approve → XAdES sign → seal → PDF/A-3b" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Noto Sans JP;fontSize=14;fontColor=#777777;" vertex="1" parent="1">
+          <mxGeometry x="40" y="66" width="1200" height="26" as="geometry" />
+        </mxCell>
+
+        <!-- ===== walkthrough legend ===== -->
+        <mxCell id="legend" value="Demo walkthrough — ./demo/README.md&#10;&#10;①  ./scripts/prepare.sh  → keystores + service jars + Keycloak realm&#10;②  ./demo/up.sh  — boots the 13-container stack (12-service base + demo-seed),&#10;      blocks until one batch sits at PENDING_REGISTRAR&#10;③  http://localhost:8081  — log in as registrar1, open the batch, click &quot;Approve or reject&quot;&#10;      → the UI POSTs {&quot;decision&quot;:&quot;APPROVE&quot;,&quot;rejectedDocumentIds&quot;:[]}&#10;④  log out, log in as dean1, Approve the same batch (a premature dean click → 409)&#10;⑤  wait ~2 min — cumulative saga cost: 3 CSC round-trips, Kafka hops + outbox&#10;      relay poll, FOP render + veraPDF gate.  Not a TSA.  Reload /monitor to see COMPLETED.&#10;⑥  MinIO console :9001  — transcript-pdfs/ + signed-transcripts/&#10;&#10;./demo/smoke.sh  asserts ≥1 PENDING_REGISTRAR   ·   ./demo/down.sh  stops + wipes volumes" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=12;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;fillColor=#f5f5f5;strokeColor=#b0b0b0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="510" width="900" height="225" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
