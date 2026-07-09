@@ -29,4 +29,7 @@ sdd/
 *.log
 logs/
 .worktrees
-etax/
+
+# Convenience symlink to ../../etax (build-jars.sh resolves the CSC service there).
+# No trailing slash: it is a symlink, which git treats as a file, so `etax/` never matched.
+etax
