@@ -17,16 +17,20 @@ import java.util.Calendar;
 import java.util.Date;
 
 /**
- * One-time tool: generates 3 RSA-2048 BCFKS keystores for the e2e harness.
- * Run via scripts/gen-keystores.sh. Skips files that already exist (idempotent).
- * Output is committed as binary blobs — never regenerate unless rotating keys.
+ * Generates 3 RSA-2048 BCFKS keystores for the CSC signer. Two callers:
+ * scripts/gen-keystores.sh (via `mvn test-compile exec:java`, local dev/IT
+ * paths — output goes to the relative default) and the keystore-init image
+ * (this class as ENTRYPOINT, output directory set via KEYSTORE_OUTPUT_DIR
+ * to /out, a mounted named volume). Skips files that already exist
+ * (idempotent) so a restart within one `up` lifecycle is a no-op.
  */
 public class KeystoreGenerator {
 
     public static void main(String[] args) throws Exception {
         Security.insertProviderAt(new BouncyCastleFipsProvider(), 1);
 
-        Path keystoresDir = Path.of("infra/csc/keystores");
+        Path keystoresDir = Path.of(
+                System.getenv().getOrDefault("KEYSTORE_OUTPUT_DIR", "infra/csc/keystores"));
         Files.createDirectories(keystoresDir);
 
         generate(keystoresDir.resolve("registrar.bfks"), "e2e-registrar-2024");
