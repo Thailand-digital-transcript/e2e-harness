@@ -4,15 +4,21 @@ Boot the whole digital-transcript platform locally, with a transcript already
 waiting in the approval queue, and walk it through registrar → dean approval to a
 completed signed PDF/A-3b — all in the browser.
 
+![Public demo flow: demo-seed ingests a transcript and opens a batch, a human approves as registrar then dean, and the saga signs (XAdES), seals (XAdES + PAdES) via the CSC remote signer, and renders a PDF/A-3b into MinIO](demo-flow.png)
+
+*Source: [`demo-flow.drawio`](demo-flow.drawio) — edit at [diagrams.net](https://app.diagrams.net), then
+re-export with `drawio -x -f png -s 2 --no-sandbox -o demo-flow.png demo-flow.drawio`. Keep
+`--no-sandbox`: without it the CLI exits `0` and silently writes no file on headless/containerised
+hosts.*
+
 > **Dev-only sandbox.** The realm, the `e2e-dev-secret` client secret, the demo
 > user passwords, and `minioadmin` / `admin` are known throwaway values. Never
 > reuse them outside a local sandbox.
 
 ## Prerequisites
 
-**Public quick start (no build tools):** Docker with the Compose **v2.24+** plugin (needed
-for `docker-compose.public.yml`'s `!reset` merge behavior — plain `v2.20+` is enough for
-every other path below).
+**Public quick start (no build tools):** Docker with the Compose **v2** plugin. Nothing else —
+`docker-compose.public.yml` is standalone and pulls every image.
 
 **Building from source:**
 - Docker with the Compose **v2.20+** plugin.
