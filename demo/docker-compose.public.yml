@@ -11,6 +11,17 @@
 # infra/csc/seed.sql, demo/seed.sh, and the fixture XML — see the design spec
 # (docs/superpowers/specs/2026-07-09-public-demo-images-design.md) for why
 # those four can't be baked into an image without three more repos to publish.
+#
+# Bind-mount paths below are relative to THIS file's directory (demo/), not
+# the repo root — Compose resolves relative volume paths against the
+# directory of the first (here, only) -f file. docker-compose.yml's own
+# bind mounts use root-relative paths (./infra/..., ./demo/seed.sh) because
+# that file always runs with itself listed first in a multi -f chain, making
+# the repo root the project directory. This file runs alone, so copying a
+# path string verbatim from docker-compose.yml is wrong here — confirmed the
+# hard way: `docker compose config --quiet` validates YAML syntax only, never
+# checks that a bind-mount source path actually exists, so this broke silently
+# until a real `up` was tried against a fresh clone.
 
 volumes:
   csc-keystores:
@@ -22,7 +33,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
     volumes:
-      - ./infra/postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ../infra/postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -137,7 +148,7 @@ services:
     environment:
       PGPASSWORD: postgres
     volumes:
-      - ./infra/csc/seed.sql:/seed.sql:ro
+      - ../infra/csc/seed.sql:/seed.sql:ro
     entrypoint: >
       /bin/sh -c "
         psql -h postgres -U postgres -d eidasremotesigning -f /seed.sql &&
@@ -314,7 +325,7 @@ services:
       INSTITUTION_CODE: "01110"
       FIXTURE_PATH: /fixtures/input.xml
     volumes:
-      - ./demo/seed.sh:/seed.sh:ro
-      - ./src/test/resources/fixtures/Transcript_v2.0.xml:/fixtures/input.xml:ro
+      - ./seed.sh:/seed.sh:ro
+      - ../src/test/resources/fixtures/Transcript_v2.0.xml:/fixtures/input.xml:ro
     entrypoint: ["/bin/sh", "-c", "apk add --no-cache bash curl jq >/dev/null && bash /seed.sh"]
     restart: "no"
