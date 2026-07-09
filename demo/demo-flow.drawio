@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" modified="2026-07-09T00:00:00.000Z" agent="Claude" version="21.0.0">
   <diagram name="Demo-Flow" id="demo-flow">
-    <mxGraphModel dx="1500" dy="820" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1960" pageHeight="770" math="0" shadow="0" defaultFontFamily="Noto Sans JP">
+    <mxGraphModel dx="1500" dy="820" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1960" pageHeight="790" math="0" shadow="0" defaultFontFamily="Noto Sans JP">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -33,9 +33,12 @@
         <mxCell id="e_pdf_minio" value="PDF/A-3b&#10;(veraPDF gate)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#b85450;strokeColor=#b85450;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="pdf" target="minio">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="e_ks_csc" value="csc-keystores&#10;(named volume, :ro)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontFamily=Noto Sans JP;fontSize=11;fontColor=#b09500;strokeColor=#d6b656;strokeWidth=2;dashed=1;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ks" target="csc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
 
         <!-- ===== seed lane ===== -->
-        <mxCell id="seed" value="demo-seed  (one-shot)&#10;&#10;./demo/up.sh · seed.sh&#10;client-credentials token&#10;transcript-e2e / e2e-dev-secret" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+        <mxCell id="seed" value="demo-seed  (one-shot)&#10;&#10;alpine + seed.sh (from the clone)&#10;client-credentials token&#10;transcript-e2e / e2e-dev-secret" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
           <mxGeometry x="40" y="130" width="200" height="105" as="geometry" />
         </mxCell>
         <mxCell id="proc" value="transcript-processing&#10;:8085&#10;&#10;dedup by &lt;tc:TranscriptID&gt;&#10;source XML → signed-transcripts/" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
@@ -49,8 +52,8 @@
         <mxCell id="ui" value="transcript-approval-ui&#10;:8081  (nginx + React)&#10;&#10;queue → batch detail →&#10;&quot;Approve or reject&quot; dialog" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=13;arcSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="400" y="265" width="230" height="105" as="geometry" />
         </mxCell>
-        <mxCell id="kc" value="Keycloak :8080&#10;realm transcript · admin/admin" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=12;arcSize=15;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="400" y="415" width="230" height="60" as="geometry" />
+        <mxCell id="kc" value="transcript-keycloak :8080&#10;realm baked into the image&#10;(no bind mount) · admin/admin" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=12;arcSize=15;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="415" width="230" height="70" as="geometry" />
         </mxCell>
 
         <!-- ===== saga row ===== -->
@@ -70,7 +73,12 @@
 
         <!-- ===== CSC signing service ===== -->
         <mxCell id="csc" value="eidasremotesigning · CSC v2 RSSP  :9000&#10;&#10;XAdES-BASELINE-B  ·  PAdES-B-B&#10;base64 digests only — never document bytes&#10;B-B ⇒ claimed SigningTime, no TSA is called" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=12;arcSize=10;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="1150" y="430" width="290" height="110" as="geometry" />
+          <mxGeometry x="1130" y="425" width="290" height="105" as="geometry" />
+        </mxCell>
+
+        <!-- ===== keystore-init (new in the public path) ===== -->
+        <mxCell id="ks" value="keystore-init  (one-shot)&#10;RSA-2048 BCFKS × 3 — registrar · dean · seal&#10;generated at boot; no key material in git or any image" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=11;arcSize=12;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="625" width="290" height="80" as="geometry" />
         </mxCell>
 
         <!-- ===== MinIO buckets ===== -->
@@ -94,16 +102,24 @@
         </mxCell>
 
         <!-- ===== titles ===== -->
-        <mxCell id="t_title" value="Digital Transcript — Demo Flow (e2e-harness)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Noto Sans JP;fontSize=26;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+        <mxCell id="t_title" value="Digital Transcript — Public Demo Flow (pull-only)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Noto Sans JP;fontSize=26;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
           <mxGeometry x="40" y="24" width="1100" height="40" as="geometry" />
         </mxCell>
         <mxCell id="t_sub" value="Human-in-the-loop approval saga:  ingest → batch → registrar approve → dean approve → XAdES sign → seal → PDF/A-3b" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=Noto Sans JP;fontSize=14;fontColor=#777777;" vertex="1" parent="1">
           <mxGeometry x="40" y="66" width="1200" height="26" as="geometry" />
         </mxCell>
+        <mxCell id="t_badge" value="Every service is a published image, pinned to :v0.1.0&#10;ghcr.io/thailand-digital-transcript/*&#10;Nothing is built — no JDK, no Maven, no prepare.sh." style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=12;fontColor=#2d6a2d;align=center;verticalAlign=middle;fillColor=#e8f5e9;strokeColor=#82b366;arcSize=15;spacingLeft=8;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="18" width="530" height="72" as="geometry" />
+        </mxCell>
 
         <!-- ===== walkthrough legend ===== -->
-        <mxCell id="legend" value="Demo walkthrough — ./demo/README.md&#10;&#10;①  ./scripts/prepare.sh  → keystores + service jars + Keycloak realm&#10;②  ./demo/up.sh  — boots the 13-container stack (12-service base + demo-seed),&#10;      blocks until one batch sits at PENDING_REGISTRAR&#10;③  http://localhost:8081  — log in as registrar1, open the batch, click &quot;Approve or reject&quot;&#10;      → the UI POSTs {&quot;decision&quot;:&quot;APPROVE&quot;,&quot;rejectedDocumentIds&quot;:[]}&#10;④  log out, log in as dean1, Approve the same batch (a premature dean click → 409)&#10;⑤  wait ~2 min — cumulative saga cost: 3 CSC round-trips, Kafka hops + outbox&#10;      relay poll, FOP render + veraPDF gate.  Not a TSA.  Reload /monitor to see COMPLETED.&#10;⑥  MinIO console :9001  — transcript-pdfs/ + signed-transcripts/&#10;&#10;./demo/smoke.sh  asserts ≥1 PENDING_REGISTRAR   ·   ./demo/down.sh  stops + wipes volumes" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=12;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;fillColor=#f5f5f5;strokeColor=#b0b0b0;" vertex="1" parent="1">
-          <mxGeometry x="40" y="510" width="900" height="225" as="geometry" />
+        <mxCell id="legend" value="Public demo — ./demo/README.md&#10;&#10;①  git clone --depth 1 https://github.com/Thailand-digital-transcript/e2e-harness  &amp;&amp;  cd e2e-harness&#10;②  docker compose -f demo/docker-compose.public.yml up&#10;      boots 14 services (8 pulled from GHCR + postgres · kafka · minio · mc · alpine),&#10;      demo-seed stops at PENDING_REGISTRAR&#10;③  http://localhost:8081  — log in as registrar1, open the batch, click &quot;Approve or reject&quot;&#10;      → the UI POSTs {&quot;decision&quot;:&quot;APPROVE&quot;,&quot;rejectedDocumentIds&quot;:[]}&#10;④  log out, log in as dean1, Approve the same batch (a premature dean click → 409)&#10;⑤  wait ~2 min — cumulative saga cost: 3 CSC round-trips, Kafka hops + outbox relay poll,&#10;      FOP render + veraPDF gate.  Not a TSA.  Reload /monitor to see COMPLETED.&#10;⑥  MinIO console :9001  — transcript-pdfs/ + signed-transcripts/&#10;&#10;Tear down:  docker compose -f demo/docker-compose.public.yml down -v&#10;Build-from-source path (./scripts/prepare.sh + ./demo/up.sh) boots the same topology." style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Noto Sans JP;fontSize=12;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;fillColor=#f5f5f5;strokeColor=#b0b0b0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="510" width="900" height="250" as="geometry" />
+        </mxCell>
+
+        <!-- ===== clone-supplied files note ===== -->
+        <mxCell id="clone_note" value="The clone supplies only 4 small config files the images can't carry:&#10;infra/postgres/init.sh  ·  infra/csc/seed.sql  ·  demo/seed.sh  ·  the fixture XML&#10;(paths in docker-compose.public.yml are relative to demo/, not the repo root)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=Noto Sans JP;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="960" y="715" width="450" height="55" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
