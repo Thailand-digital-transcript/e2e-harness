@@ -10,6 +10,11 @@ completed signed PDF/A-3b — all in the browser.
 
 ## Prerequisites
 
+**Public quick start (no build tools):** Docker with the Compose **v2.24+** plugin (needed
+for `docker-compose.public.yml`'s `!reset` merge behavior — plain `v2.20+` is enough for
+every other path below).
+
+**Building from source:**
 - Docker with the Compose **v2.20+** plugin.
 - JDK 21 + Maven, needed once to build the service JARs.
 - Host `curl` + `jq`, used by `./demo/smoke.sh`.
@@ -33,16 +38,44 @@ base + a one-shot `demo-seed`), and blocks until the seed job has placed one bat
 at `PENDING_REGISTRAR`. On a cold start this takes several minutes (Keycloak realm
 import + five Spring Boot JVMs; the approval UI is an nginx image, not a JVM).
 
-> **The three workflows coexist cleanly.** The base `docker-compose.yml` is
+## Quick start — no build tools
+
+If you don't want to install JDK/Maven or check out six sibling repos, run the demo entirely
+from published images instead:
+
+```bash
+git clone --depth 1 https://github.com/Thailand-digital-transcript/e2e-harness
+cd e2e-harness
+docker compose -f demo/docker-compose.public.yml up
+```
+
+Every service is a pinned `:v0.1.0` image pulled from GHCR — nothing is built, so this skips
+`./scripts/prepare.sh` entirely. The clone supplies four small config files the images can't
+carry (Postgres init, the CSC seed SQL, the seed script, and the fixture XML) — see
+"How it works" below. Everything past this point in the walkthrough is identical either way.
+
+Tear down with:
+
+```bash
+docker compose -f demo/docker-compose.public.yml down -v
+```
+
+> **Four workflows coexist cleanly.** The base `docker-compose.yml` is
 > intentionally port-less so `mvn verify` can run without host-port conflicts.
 > `./scripts/dev-up.sh` layers `docker-compose.dev.yml` for the manual UI
 > workflow; `./demo/up.sh` layers `demo/docker-compose.demo.yml` to add the
 > `demo-seed` job and the Keycloak/UI/orchestrator/MinIO ports. `mvn verify`
 > boots its **own** Testcontainers-managed stack from the port-less base file,
 > so it binds no host ports and can run alongside a manual dev stack (it does
-> not test *against* that stack). **Do not** run `./demo/up.sh` and
-> `./scripts/dev-up.sh` at the same time — they both bind `8080`, `8081`, and
-> `8095` and would collide. Tear the demo down with `./demo/down.sh` first.
+> not test *against* that stack). `demo/docker-compose.public.yml` is a
+> **fourth, standalone** path — it is not layered on `docker-compose.yml` at
+> all, since nothing in it is built from source. **Do not** run
+> `./demo/up.sh` and `./scripts/dev-up.sh` at the same time — they both bind
+> `8080`, `8081`, and `8095` and would collide. `docker-compose.public.yml`
+> binds the same three ports, so don't run it alongside either of those two
+> either. Tear the demo down with `./demo/down.sh` (or
+> `docker compose -f demo/docker-compose.public.yml down -v` for the public
+> path) first.
 
 ## Walkthrough
 
@@ -145,7 +178,8 @@ between each other:
 |----------|---------|--------------|
 | Integration test | `mvn verify` | Testcontainers-managed stack on its own ambassador network |
 | Manual dev | `./scripts/dev-up.sh` | `docker-compose.dev.yml` overlay → host port bindings (8080/8081/8085/8088/8090/8095) |
-| Demo | `./demo/up.sh` | `demo/docker-compose.demo.yml` overlay → Keycloak (8080), approval UI (8081), orchestrator API (8095), MinIO S3 + console (9000/9001), and the one-shot `demo-seed` container |
+| Demo (from source) | `./demo/up.sh` | `demo/docker-compose.demo.yml` overlay → Keycloak (8080), approval UI (8081), orchestrator API (8095), MinIO S3 + console (9000/9001), and the one-shot `demo-seed` container |
+| Demo (published images) | `docker compose -f demo/docker-compose.public.yml up` | standalone — the full topology, every service a pinned `:v0.1.0` GHCR image, no `build:` anywhere |
 
 `demo/docker-compose.demo.yml` only adds what the demo needs beyond the base:
 host bindings for Keycloak (8080) and the approval UI (8081) so the walkthrough
@@ -159,3 +193,10 @@ client-credentials token, and opens + closes a batch — stopping at
 `PENDING_REGISTRAR` so the approvals are left for you. All wrappers run
 `docker compose -f docker-compose.yml -f demo/docker-compose.demo.yml` from
 the repo root.
+
+`demo/docker-compose.public.yml` is not layered on `docker-compose.yml` — it's a complete,
+self-contained topology using published images. `keystore-init` (a one-shot container) and
+`transcript-keycloak` (Keycloak with the realm baked in) replace the bind-mounted keystores
+and realm file respectively; the four remaining bind mounts (`infra/postgres/init.sh`,
+`infra/csc/seed.sql`, `demo/seed.sh`, and the fixture XML) are small enough that a shallow
+clone supplying them beats publishing three more images just to eliminate a `git clone`.
