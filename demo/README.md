@@ -110,6 +110,60 @@ docker compose -f demo/docker-compose.public.yml down -v
 5. **Poke Keycloak** admin at <http://localhost:8080> (`admin` / `admin`) to see the
    realm, users, roles, and the `transcript-e2e` client.
 
+## What it looks like
+
+Captured from a real run of the walkthrough above — logging in through Keycloak and clicking
+through the approval dialog, not driving the API directly.
+
+### Before either approval
+
+The seeded batch waits at `PENDING_REGISTRAR`, and `transcript-pdfs` is empty — nothing has
+been signed or rendered yet.
+
+| Approval UI — registrar's queue | MinIO — `transcript-pdfs` |
+|---|---|
+| ![Registrar's approval queue showing Demo-Batch at status Pending Registrar](screenshots/01-ui-registrar-queue-before.png) | ![MinIO console showing the transcript-pdfs bucket with the message "This location is empty"](screenshots/03-minio-transcript-pdfs-before.png) |
+
+`signed-transcripts`, though, is **already non-empty** at this point — 1 object, 14.2 KiB, under a
+date prefix. That's the *source* XML, which `transcript-processing` uploaded at ingest, long before
+anyone approved anything. (It writes there rather than to its own `transcripts` bucket, because
+signing and pdf-generation both read from `signed-transcripts`.)
+
+![MinIO console showing signed-transcripts already holding 1 object, 14.2 KiB, under a 2026 folder](screenshots/04-minio-signed-transcripts-before.png)
+
+The batch detail page is where the decision is made — note the button is **Approve or reject**,
+which opens a dialog whose submit button reads *Submit decision*:
+
+![Batch detail page with an Approve or reject button](screenshots/02-ui-batch-detail-before.png)
+
+### After the registrar approves
+
+The registrar's XAdES signature is applied and the batch advances to the dean's gate. It now
+appears in `dean1`'s queue as `PENDING_DEAN`:
+
+![Dean's approval queue showing Demo-Batch at status Pending Dean](screenshots/05-ui-dean-queue-pending-dean.png)
+
+### After the dean approves
+
+The saga seals the document and renders the PDF/A-3b. `/monitor` shows `COMPLETED` (reload it —
+it does not auto-refresh), and both buckets now hold artifacts.
+
+| Approval UI — `/monitor` | MinIO — the generated PDF/A-3b |
+|---|---|
+| ![Monitor page showing Demo-Batch at status Completed](screenshots/06-ui-monitor-completed-after.png) | ![MinIO console showing transcript.pdf, 151.8 KiB, nested under batch and document id prefixes](screenshots/07b-minio-transcript-pdf-object.png) |
+
+Objects are nested under `<batchId>/<documentId>/`, so the bucket root only ever shows a folder —
+you have to click into it (or use `mc ls --recursive`) to see the file:
+
+| MinIO — `transcript-pdfs` root | MinIO — `signed-transcripts` root |
+|---|---|
+| ![transcript-pdfs bucket root showing a single batch-id folder](screenshots/07-minio-transcript-pdfs-after.png) | ![signed-transcripts bucket root showing 2026, PDF and XML prefixes](screenshots/08-minio-signed-transcripts-after.png) |
+
+`signed-transcripts` holds three objects: the source XML under a date prefix, the sealed
+XAdES XML under `XML/`, and the PAdES-signed PDF under `PDF/`:
+
+![MinIO console showing signed.pdf, 171.5 KiB, under the PDF prefix](screenshots/08b-minio-signed-pdf-object.png)
+
 ## Ingest your own transcript
 
 ```bash
