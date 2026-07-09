@@ -72,11 +72,17 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Kafka clients: KafkaProducer + KafkaConsumer for KafkaE2EHelper -->
+        <!-- Kafka clients. NOTE: nothing in src/ actually imports org.apache.kafka —
+             KafkaE2EHelper drives Kafka by exec'ing kafka-console-* inside the kafka
+             container, not with this client. Kept (test scope) rather than deleted so a
+             future in-process producer/consumer has it to hand, but it must not sit at
+             compile scope: that dragged ~2400 Kafka classes into the shaded keystore-init
+             jar, which needs only KeystoreGenerator + BC FIPS. -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <version>3.6.1</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- AWS SDK v2 S3: MinIO artifact verification -->
@@ -165,11 +171,14 @@
                  regardless of manifest fixes (confirmed: adding back Multi-Release: true
                  to the shaded manifest did not help — same checksum mismatch). Shipping
                  the FIPS jars untouched, wired in via Class-Path, is the only combination
-                 that passes BC FIPS's self-test. bcutil-fips is bcpkix-fips's own
-                 transitive dependency (not declared directly in this pom) — if bumping
-                 bcpkix-fips's version changes its resolved bcutil-fips version, update the
-                 Class-Path entry below to match (check with
-                 `mvn dependency:tree -Dscope=compile`). -->
+                 that passes BC FIPS's self-test.
+
+                 No jar filename is written down anywhere: this execution copies whatever
+                 bc-fips/bcpkix-fips (and bcpkix's transitive bcutil-fips) resolve to, and
+                 Dockerfile.keystore-init puts them on the classpath with a `lib/*` wildcard.
+                 A version bump therefore needs no coordinated edit — the old hand-written
+                 `Class-Path: lib/bc-fips-2.1.2.jar ...` manifest entry could silently name a
+                 jar that no longer existed. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -190,11 +199,12 @@
                 </executions>
             </plugin>
 
-            <!-- Shades KeystoreGenerator into a runnable jar for the keystore-init image.
+            <!-- Shades KeystoreGenerator into a jar for the keystore-init image.
                  shadedClassifierName keeps this as a separate artifact so the module's own
                  jar (used nowhere) is untouched. BC FIPS artifacts are excluded from the
-                 merge (see comment on maven-dependency-plugin above) and reached instead via
-                 the Class-Path manifest entry, resolved relative to lib/ next to this jar. -->
+                 merge (see comment on maven-dependency-plugin above); the Dockerfile reaches
+                 them via a `lib/*` classpath wildcard rather than a Class-Path manifest
+                 entry, so no jar version is hardcoded anywhere. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -219,9 +229,6 @@
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>com.wpanther.transcript.e2e.KeystoreGenerator</mainClass>
-                                    <manifestEntries>
-                                        <Class-Path>lib/bc-fips-2.1.2.jar lib/bcpkix-fips-2.1.10.jar lib/bcutil-fips-2.1.6.jar</Class-Path>
-                                    </manifestEntries>
                                 </transformer>
                             </transformers>
                         </configuration>
