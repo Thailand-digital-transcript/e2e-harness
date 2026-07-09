@@ -225,6 +225,16 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      # S3StorageAdapter reads the source XML and writes the sealed XML to the
+      # signed-transcripts bucket, so signing needs minio up AND minio-init to
+      # have created the buckets — same as the other three S3-using services.
+      # In practice signing only touches S3 after a Kafka SIGN command arrives,
+      # which cannot happen before transcript-processing (which does wait on
+      # minio-init) has ingested — but relying on that ordering is implicit.
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       csc:
         condition: service_healthy
       csc-seed:

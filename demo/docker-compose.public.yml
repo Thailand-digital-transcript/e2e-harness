@@ -235,6 +235,12 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      # Mirrors docker-compose.yml: signing's S3StorageAdapter needs the
+      # signed-transcripts bucket to exist, so it waits on minio-init too.
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       csc:
         condition: service_healthy
       csc-seed:
