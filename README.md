@@ -218,3 +218,9 @@ base64-encodes payloads so arbitrary JSON survives the shell.
   services have pre-existing test compile errors unrelated to this harness.
 - Service runtimes target Java 17 (`eclipse-temurin:17-jre-alpine` in the
   Dockerfiles); the harness itself compiles and runs on Java 21.
+- **2026-07-10 — Task 7 e2e verification (`retire-single-document` cleanup):**
+  `CrossServiceHappyPathIT` passed end-to-end (230.7s wall time) with the
+  retired single-document signing path removed from `transcript-signing`,
+  confirming the demo saga — ingest → batch → registrar/dean XAdES → seal
+  XAdES+PAdES → PDF/A-3b — is unaffected. See
+  `transcript-signing/.superpowers/sdd/task-7-brief.md` for the full plan.
