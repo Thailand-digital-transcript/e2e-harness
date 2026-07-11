@@ -302,18 +302,26 @@ class CrossServiceHappyPathIT {
                 .isGreaterThan(0);
 
         // ── Step 11: Assert the FINAL artifact is a PAdES-signed PDF ──────────
+        List<String> signedKeys = xmlObjects.contents().stream().map(S3Object::key).toList();
+
         // The PDF signing phase must seal the rendered PDF/A-3b with PAdES — not
-        // re-sign the sealed XML. Locate PDF/<batch>/<doc>/signed.pdf and verify the
-        // bytes are a real PDF carrying a PAdES signature (/ByteRange + ETSI.CAdES).
-        String signedPdfKey = xmlObjects.contents().stream()
-                .map(S3Object::key)
-                .filter(k -> k.startsWith("PDF/") && k.endsWith("signed.pdf"))
+        // re-sign the sealed XML. The sealed PDF sits beside every other artifact of
+        // this transcript, under the ingest-date prefix, with the transcript ID as its
+        // filename stem: 2026/07/10/01/transcript-<id>.sealed.pdf
+        String sealedPdfKey = signedKeys.stream()
+                .filter(k -> k.endsWith(".sealed.pdf"))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError(
-                        "No PAdES-signed PDF (PDF/**/signed.pdf) in signed-transcripts; keys="
-                                + xmlObjects.contents().stream().map(S3Object::key).toList()));
+                        "No PAdES-signed PDF (**/transcript-<id>.sealed.pdf) in signed-transcripts; keys="
+                                + signedKeys));
+
+        assertThat(sealedPdfKey)
+                .as("no UUID may appear in any object key")
+                .doesNotMatch(".*[0-9a-f]{8}-[0-9a-f]{4}-.*")
+                .matches("\\d{4}/\\d{2}/\\d{2}/[^/]+/transcript-[^/]+\\.sealed\\.pdf");
+
         byte[] signedPdf = s3.getObjectAsBytes(GetObjectRequest.builder()
-                .bucket("signed-transcripts").key(signedPdfKey).build()).asByteArray();
+                .bucket("signed-transcripts").key(sealedPdfKey).build()).asByteArray();
         String pdfText = new String(signedPdf, StandardCharsets.ISO_8859_1);
         assertThat(pdfText)
                 .as("Final signing artifact must be a real PDF, not XML")
