@@ -136,16 +136,14 @@ ingest date (`yyyy/MM/dd`) plus the transcript's own type code.
 
 ### Before either approval
 
-The seeded batch waits at `PENDING_REGISTRAR`, and `transcript-pdfs` is empty — nothing has
-been signed or rendered yet.
-
-| Approval UI — registrar's queue | MinIO — `transcript-pdfs` |
-|---|---|
-| ![Registrar's approval queue showing Demo-Batch at status Pending Registrar](screenshots/01-ui-registrar-queue-before.png) | ![MinIO console showing the transcript-pdfs bucket with the message "This location is empty"](screenshots/03-minio-transcript-pdfs-before.png) |
-
-`transcripts` is **already non-empty** at this point — exactly one object, under a
-`yyyy/MM/dd/typeCode/` prefix. That's the *original* XML, which `transcript-processing`
+The seeded batch waits at `PENDING_REGISTRAR`. The other two buckets are still empty — nothing
+has been signed, sealed, or rendered yet. But `transcripts` is **already non-empty**: exactly
+one object, under the date/typeCode prefix, is the *original* XML that `transcript-processing`
 uploaded at ingest, long before anyone approved anything.
+
+| Approval UI — registrar's queue | MinIO — `transcripts` (the original XML) |
+|---|---|
+| ![Registrar's approval queue showing Demo-Batch at status Pending Registrar](screenshots/01-ui-registrar-queue-before.png) | ![MinIO console showing the transcripts bucket holding the original ingested XML under a date/typeCode prefix](screenshots/03b-minio-transcripts-before.png) |
 
 The batch detail page is where the decision is made — note the button is **Approve or reject**,
 which opens a dialog whose submit button reads *Submit decision*:
