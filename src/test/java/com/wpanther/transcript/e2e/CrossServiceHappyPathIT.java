@@ -4,7 +4,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -34,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class CrossServiceHappyPathIT {
 
     // ── Service names as defined in docker-compose.yml ─────────────────────
@@ -84,6 +89,26 @@ class CrossServiceHappyPathIT {
 
     private static final HttpClient HTTP = HttpClient.newHttpClient();
 
+    // Shared across every @Test method (ordered — see @TestMethodOrder above):
+    // fullHappyPath() populates the buckets that the two key-layout gate tests
+    // then inspect. Built once in @BeforeAll rather than per-test since the
+    // Testcontainers extension guarantees ENV is already up by the time any
+    // @BeforeAll on this class runs.
+    private static S3Client s3;
+
+    @BeforeAll
+    static void setUpS3Client() {
+        String minioHost = ENV.getServiceHost(MINIO_SVC, MINIO_PORT);
+        int    minioPort = ENV.getServicePort(MINIO_SVC, MINIO_PORT);
+        s3 = S3Client.builder()
+                .endpointOverride(URI.create("http://" + minioHost + ":" + minioPort))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create("minioadmin", "minioadmin")))
+                .region(Region.US_EAST_1)
+                .forcePathStyle(true)
+                .build();
+    }
+
     // ── DTOs (fields match actual JSON; @JsonIgnoreProperties absorbs extras) ─
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -112,6 +137,7 @@ class CrossServiceHappyPathIT {
     // ── The test ────────────────────────────────────────────────────────────
 
     @Test
+    @Order(1)
     void fullHappyPath() throws Exception {
         // ── Wire helpers ──────────────────────────────────────────────────
         String processingBase   = base(PROCESSING,   PROCESSING_PORT);
@@ -127,16 +153,6 @@ class CrossServiceHappyPathIT {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("kafka container not found in compose env"));
         KafkaE2EHelper kafka = new KafkaE2EHelper(kafkaContainer, MAPPER);
-
-        String minioHost = ENV.getServiceHost(MINIO_SVC, MINIO_PORT);
-        int    minioPort = ENV.getServicePort(MINIO_SVC, MINIO_PORT);
-        S3Client s3 = S3Client.builder()
-                .endpointOverride(URI.create("http://" + minioHost + ":" + minioPort))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create("minioadmin", "minioadmin")))
-                .region(Region.US_EAST_1)
-                .forcePathStyle(true)
-                .build();
 
         // ── Step 1: POST transcript XML to processing service ─────────────
         String xmlBody = new String(CrossServiceHappyPathIT.class
@@ -282,8 +298,7 @@ class CrossServiceHappyPathIT {
         assertThat(completed.institutionCode()).isEqualTo(INSTITUTION_CODE);
 
         // ── Step 9: Assert signed PDF in transcript-pdfs bucket ──────────
-        ListObjectsV2Response pdfObjects = s3.listObjectsV2(
-                ListObjectsV2Request.builder().bucket("transcript-pdfs").build());
+        ListObjectsV2Response pdfObjects = listObjects("transcript-pdfs");
         assertThat(pdfObjects.contents())
                 .as("transcript-pdfs bucket must have at least one object")
                 .isNotEmpty();
@@ -292,8 +307,7 @@ class CrossServiceHappyPathIT {
                 .isGreaterThan(0);
 
         // ── Step 10: Assert sealed XML in signed-transcripts bucket ───────
-        ListObjectsV2Response xmlObjects = s3.listObjectsV2(
-                ListObjectsV2Request.builder().bucket("signed-transcripts").build());
+        ListObjectsV2Response xmlObjects = listObjects("signed-transcripts");
         assertThat(xmlObjects.contents())
                 .as("signed-transcripts bucket must have at least one object")
                 .isNotEmpty();
@@ -302,7 +316,7 @@ class CrossServiceHappyPathIT {
                 .isGreaterThan(0);
 
         // ── Step 11: Assert the FINAL artifact is a PAdES-signed PDF ──────────
-        List<String> signedKeys = xmlObjects.contents().stream().map(S3Object::key).toList();
+        List<String> signedKeys = keysOf(xmlObjects);
 
         // The PDF signing phase must seal the rendered PDF/A-3b with PAdES — not
         // re-sign the sealed XML. The sealed PDF sits beside every other artifact of
@@ -332,7 +346,45 @@ class CrossServiceHappyPathIT {
                 .contains("ETSI.CAdES.detached");
     }
 
+    @Test
+    @Order(2)
+    void noObjectKeyInAnyBucketContainsAUuid() {
+        // "No UUIDs in object paths" as an executable statement. This is the requirement
+        // itself, not a proxy for it — it catches any future service that reintroduces one.
+        for (String bucket : List.of("transcripts", "signed-transcripts", "transcript-pdfs")) {
+            for (String key : listKeys(bucket)) {
+                assertThat(key)
+                        .as("bucket %s", bucket)
+                        .doesNotMatch(".*[0-9a-f]{8}-[0-9a-f]{4}-.*");
+            }
+        }
+    }
+
+    @Test
+    @Order(3)
+    void theOriginalTranscriptLivesInTheTranscriptsBucket() {
+        // No unit test can show this: it is the whole point of deleting the MINIO_BUCKET
+        // override, and only a running stack proves processing actually moved.
+        List<String> originals = listKeys("transcripts");
+        assertThat(originals).hasSize(1);
+        assertThat(originals.get(0))
+                .matches("\\d{4}/\\d{2}/\\d{2}/[^/]+/transcript-[^/]+\\.xml");
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private ListObjectsV2Response listObjects(String bucket) {
+        return s3.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).build());
+    }
+
+    private List<String> keysOf(ListObjectsV2Response response) {
+        return response.contents().stream().map(S3Object::key).toList();
+    }
+
+    /** Reusable MinIO key lister — every bucket-listing call in this IT goes through this. */
+    private List<String> listKeys(String bucket) {
+        return keysOf(listObjects(bucket));
+    }
 
     private String base(String service, int port) {
         return "http://" + ENV.getServiceHost(service, port)

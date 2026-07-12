@@ -162,10 +162,6 @@ services:
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
-      # Canonical XML bucket: signing reads source XML and pdf-generation reads
-      # the sealed XML from 'signed-transcripts' (their defaults). Processing must
-      # therefore upload the original XML there too, not its 'transcripts' default.
-      MINIO_BUCKET: signed-transcripts
       SECURITY_ENABLED: "false"
       RATE_LIMIT_ENABLED: "false"
       KAFKA_CONSUMER_AUTO_STARTUP: "true"
@@ -202,9 +198,13 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
-      # Canonical XML bucket shared by processing (upload), signing and
-      # pdf-generation (read). Orchestrator default is 'transcript-xmls'.
-      S3_XML_BUCKET: signed-transcripts
+      # Target key layout: original XML in 'transcripts' (processing's own
+      # default), signed/sealed XML in 'signed-transcripts', rendered PDFs in
+      # 'transcript-pdfs'. These match the orchestrator's own application.yml
+      # defaults; set explicitly here for clarity across environments.
+      S3_ORIGINAL_BUCKET: transcripts
+      S3_SIGNED_BUCKET: signed-transcripts
+      S3_PDF_BUCKET: transcript-pdfs
       KEYCLOAK_ISSUER: http://localhost:8080/realms/transcript
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/transcript/protocol/openid-connect/certs
       CORS_ALLOWED_ORIGINS: http://localhost:8081
