@@ -247,7 +247,7 @@ runs `demo-seed`; use `./demo/ingest.sh` for additional batches).
 
 ## How it works
 
-The repo has three compose paths that share one base topology. The base
+The repo has four compose paths that share one base topology. The base
 `docker-compose.yml` is intentionally port-less — services expose container
 ports only — so any of the following can boot without host-port collisions
 between each other:
