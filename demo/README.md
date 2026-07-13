@@ -17,8 +17,8 @@ hosts.*
 
 ## Prerequisites
 
-**Public quick start (no build tools):** Docker with the Compose **v2** plugin. Nothing else —
-`docker-compose.public.yml` is standalone and pulls every image.
+**Public quick start (no build tools):** Docker with the Compose **v2** plugin, plus `git` to
+clone this repo. Nothing else — `docker-compose.public.yml` is standalone and pulls every image.
 
 **Building from source:**
 - Docker with the Compose **v2.20+** plugin.
@@ -55,10 +55,22 @@ cd e2e-harness
 docker compose -f demo/docker-compose.public.yml up
 ```
 
-Every service is a pinned `:v0.1.0` image pulled from GHCR — nothing is built, so this skips
-`./scripts/prepare.sh` entirely. The clone supplies four small config files the images can't
-carry (Postgres init, the CSC seed SQL, the seed script, and the fixture XML) — see
+Every application service is a pinned `:v0.1.0` image pulled from GHCR, and every
+infrastructure image (Postgres, Kafka, MinIO, `mc`, alpine) is pinned to an explicit upstream
+tag — no tag floats, so the demo you get today is the demo you get next year. Nothing is built,
+so this skips `./scripts/prepare.sh` entirely. The clone supplies four small config files the
+images can't carry (Postgres init, the CSC seed SQL, the seed script, and the fixture XML) — see
 "How it works" below. Everything past this point in the walkthrough is identical either way.
+
+To confirm the GHCR images are still public before pointing anyone at them:
+
+```bash
+./demo/verify-public-images.sh          # checks the pinned v0.1.0 tag
+./demo/verify-public-images.sh main     # or any other tag
+```
+
+It logs out of GHCR first (your own credentials would mask a private package) and fails if any
+image in `docker-compose.public.yml` isn't anonymously pullable.
 
 Tear down with:
 
@@ -78,8 +90,9 @@ docker compose -f demo/docker-compose.public.yml down -v
 > all, since nothing in it is built from source. **Do not** run
 > `./demo/up.sh` and `./scripts/dev-up.sh` at the same time — they both bind
 > `8080`, `8081`, and `8095` and would collide. `docker-compose.public.yml`
-> binds the same three ports, so don't run it alongside either of those two
-> either. Tear the demo down with `./demo/down.sh` (or
+> binds those same three ports (and, like `./demo/up.sh`, `9000`/`9001` for
+> MinIO), so don't run it alongside either of those two either. Only one of
+> the three may be up at a time. Tear the demo down with `./demo/down.sh` (or
 > `docker compose -f demo/docker-compose.public.yml down -v` for the public
 > path) first.
 
