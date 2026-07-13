@@ -193,6 +193,25 @@ the full key on one line:
 
 ![MinIO console showing the sealed, PAdES-signed PDF object](screenshots/08b-minio-signed-pdf-object.png)
 
+### Sample sealed document content
+
+**Sealed XML** (`signed-transcripts/2026/07/13/01/transcript-90993829998.sealed.xml`) — the
+transcript XML after all three XAdES signatures (registrar, dean, seal) have been applied. The
+top of the file shows the transcript payload (student info, courses, GPA summary):
+
+![Sealed transcript XML showing the document body with student information and course details](screenshots/09-sealed-xml-content.png)
+
+Scrolling down, the `ds:Signature` blocks from each signing stage are visible, with XAdES
+qualifying properties (signing time, certificate digests, signature values):
+
+![Sealed transcript XML showing the ds:Signature blocks with XAdES qualifying properties from the seal signing stage](screenshots/09b-sealed-xml-signature.png)
+
+**Sealed PDF** (`signed-transcripts/2026/07/13/01/transcript-90993829998.sealed.pdf`) — the
+PAdES-signed PDF/A-3b rendered from the sealed transcript, opened in Chrome's built-in PDF
+viewer:
+
+![Sealed transcript PDF rendered in Chrome PDF viewer showing the formatted transcript document](screenshots/10-sealed-pdf-content.png)
+
 ## Ingest your own transcript
 
 ```bash
